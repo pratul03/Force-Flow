@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Organization" ADD COLUMN     "baseHourlyRate" DOUBLE PRECISION NOT NULL DEFAULT 100,
+ADD COLUMN     "overtimeMultiplier" DOUBLE PRECISION NOT NULL DEFAULT 1.5;

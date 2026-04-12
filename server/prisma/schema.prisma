@@ -1,0 +1,947 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  HR_MANAGER
+  MANAGER
+  EMPLOYEE
+  INTERN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+  TERMINATED
+  RESIGNED
+  PROBATION
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+  CONSULTANT
+}
+
+enum Currency {
+  INR
+  USD
+  EUR
+  GBP
+  AED
+}
+
+enum Language {
+  en
+  hi
+  es
+  fr
+  zh
+}
+
+enum TimeLogStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  INVOICED
+}
+
+enum LeaveType {
+  SICK
+  CASUAL
+  EARNED
+  MATERNITY
+  PATERNITY
+  BEREAVEMENT
+  MARRIAGE
+  UNPAID
+  COMP_OFF
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum QueueJobStatus {
+  PENDING
+  PROCESSING
+  RETRY
+  COMPLETED
+  FAILED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum RecruitmentStage {
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+}
+
+enum PerformanceReviewStatus {
+  DRAFT
+  PENDING_REVIEWER
+  FINALIZED
+}
+
+enum AssetStatus {
+  AVAILABLE
+  ASSIGNED
+  UNDER_MAINTENANCE
+  RETIRED
+  LOST
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TicketStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  FAILED
+  TIMED_OUT
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  QUOTED
+  WON
+  LOST
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingProvider {
+  STRIPE
+  RAZORPAY
+}
+
+enum SubscriptionInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum OrganizationSubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum SubscriptionCheckoutStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+  CANCELED
+}
+
+enum SubscriptionEventType {
+  CHECKOUT_CREATED
+  CHECKOUT_COMPLETED
+  SUBSCRIPTION_ACTIVATED
+  SUBSCRIPTION_UPDATED
+  SUBSCRIPTION_CANCELED
+  WEBHOOK_RECEIVED
+}
+
+enum MailProvider {
+  GMAIL
+  OUTLOOK
+}
+
+model Organization {
+  id                           String                        @id @default(cuid())
+  name                         String
+  logoUrl                      String?
+  logoPublicId                 String?
+  country                      String
+  currency                     Currency                      @default(INR)
+  timezone                     String                        @default("Asia/Kolkata")
+  baseHourlyRate               Float                         @default(100)
+  overtimeMultiplier           Float                         @default(1.5)
+  assets                       Asset[]
+  candidates                   RecruitmentCandidate[]
+  departments                  Department[]
+  designations                 Designation[]
+  emailTemplates               EmailTemplate[]
+  locations                    Location[]
+  holidays                     Holiday[]
+  invoiceTemplates             InvoiceTemplate[]
+  leads                        Lead[]
+  quotations                   Quotation[]
+  subscriptions                OrganizationSubscription[]
+  subscriptionCheckoutSessions SubscriptionCheckoutSession[]
+  subscriptionEvents           SubscriptionEvent[]
+  reviews                      PerformanceReview[]
+  shifts                       Shift[]
+  tickets                      Ticket[]
+  users                        User[]
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+}
+
+model EmailTemplate {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  key            String
+  name           String
+  subject        String
+  body           String
+  variables      Json?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, key])
+  @@index([organizationId, isActive])
+}
+
+model InvoiceTemplate {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  key            String
+  name           String
+  headerHtml     String?
+  bodyHtml       String
+  footerHtml     String?
+  css            String?
+  variables      Json?
+  isDefault      Boolean      @default(false)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, key])
+  @@index([organizationId, isActive, isDefault])
+}
+
+model Department {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  code           String       @unique
+  users          User[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model Designation {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  code           String
+  users          User[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model Location {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  city           String
+  country        String
+  timezone       String
+  isRemote       Boolean      @default(false)
+  users          User[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model Holiday {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  date           DateTime
+  country        String?
+  isOptional     Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, name, date])
+  @@index([organizationId, date])
+}
+
+model RecruitmentCandidate {
+  id                   String           @id @default(cuid())
+  organizationId       String
+  organization         Organization     @relation(fields: [organizationId], references: [id])
+  fullName             String
+  email                String
+  phone                String?
+  source               String?
+  resumeUrl            String?
+  totalExperienceYears Float            @default(0)
+  expectedSalary       Float?
+  expectedCurrency     Currency         @default(INR)
+  stage                RecruitmentStage @default(APPLIED)
+  score                Float?
+  scoreBreakdown       Json?
+  notes                String?
+  lastScoredAt         DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@unique([organizationId, email])
+  @@index([organizationId, stage])
+  @@index([score])
+}
+
+model PerformanceReview {
+  id             String                  @id @default(cuid())
+  organizationId String
+  organization   Organization            @relation(fields: [organizationId], references: [id])
+  userId         String
+  reviewerId     String?
+  cycleMonth     Int
+  cycleYear      Int
+  score          Float?
+  status         PerformanceReviewStatus @default(DRAFT)
+  summary        String?
+  strengths      String?
+  improvements   String?
+  goals          Json?
+  generatedByJob String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@unique([organizationId, userId, cycleMonth, cycleYear])
+  @@index([organizationId, cycleYear, cycleMonth])
+  @@index([userId])
+}
+
+model Asset {
+  id                      String       @id @default(cuid())
+  organizationId          String
+  organization            Organization @relation(fields: [organizationId], references: [id])
+  assetCode               String
+  name                    String
+  category                String
+  status                  AssetStatus  @default(AVAILABLE)
+  assignedToUserId        String?
+  purchaseDate            DateTime
+  purchaseCost            Float
+  salvageValue            Float        @default(0)
+  usefulLifeMonths        Int          @default(36)
+  accumulatedDepreciation Float        @default(0)
+  netBookValue            Float
+  lastDepreciationAt      DateTime?
+  notes                   String?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  @@unique([organizationId, assetCode])
+  @@index([organizationId, status])
+  @@index([assignedToUserId])
+}
+
+model User {
+  id                          String                        @id @default(cuid())
+  email                       String                        @unique
+  password                    String
+  avatarUrl                   String?
+  avatarPublicId              String?
+  role                        Role                          @default(EMPLOYEE)
+  status                      UserStatus                    @default(ACTIVE)
+  firstName                   String
+  lastName                    String
+  employeeId                  String                        @unique
+  organizationId              String
+  organization                Organization                  @relation(fields: [organizationId], references: [id])
+  departmentId                String?
+  department                  Department?                   @relation(fields: [departmentId], references: [id])
+  designationId               String?
+  designation                 Designation?                  @relation(fields: [designationId], references: [id])
+  locationId                  String?
+  location                    Location?                     @relation(fields: [locationId], references: [id])
+  managerId                   String?
+  manager                     User?                         @relation("UserManager", fields: [managerId], references: [id])
+  subordinates                User[]                        @relation("UserManager")
+  employmentType              EmploymentType                @default(FULL_TIME)
+  joiningDate                 DateTime
+  preferredLanguage           Language                      @default(en)
+  preferredCurrency           Currency                      @default(INR)
+  wallet                      Wallet?
+  shiftAssignments            ShiftAssignment[]
+  timeLogs                    TimeLog[]
+  leaves                      Leave[]                       @relation("UserLeaves")
+  leavesToApprove             Leave[]                       @relation("LeaveApprover")
+  approvedLeaves              Leave[]                       @relation("LeaveApprovedBy")
+  requestedTickets            Ticket[]                      @relation("RequestedTickets")
+  assignedTickets             Ticket[]                      @relation("AssignedTickets")
+  assignedByTickets           Ticket[]                      @relation("AssignedByTickets")
+  ticketComments              TicketComment[]               @relation("TicketCommentsAuthor")
+  ticketStatusEvents          TicketStatusEvent[]           @relation("TicketStatusEventActor")
+  createdLeads                Lead[]                        @relation("LeadCreator")
+  createdQuotations           Quotation[]                   @relation("QuotationCreator")
+  updatedQuotations           Quotation[]                   @relation("QuotationUpdater")
+  quotationEvents             QuotationStatusEvent[]        @relation("QuotationStatusEventActor")
+  createdSubscriptions        OrganizationSubscription[]    @relation("OrganizationSubscriptionCreator")
+  createdSubscriptionSessions SubscriptionCheckoutSession[] @relation("SubscriptionSessionCreator")
+  invoices                    Invoice[]
+  notificationLogs            NotificationLog[]
+  refreshTokens               RefreshToken[]
+  mailConnections             MailConnection[]
+  mailOAuthSessions           MailOAuthSession[]
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
+
+  @@index([organizationId])
+  @@index([departmentId])
+  @@index([designationId])
+  @@index([locationId])
+}
+
+model MailConnection {
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        MailProvider
+  accountEmail    String
+  accessTokenEnc  String
+  refreshTokenEnc String?
+  tokenType       String?
+  expiresAt       DateTime?
+  scopes          String?
+  connectedAt     DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+model MailOAuthSession {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     MailProvider
+  state        String       @unique
+  codeVerifier String
+  redirectUri  String
+  expiresAt    DateTime
+  createdAt    DateTime     @default(now())
+
+  @@index([userId, provider, expiresAt])
+}
+
+model Shift {
+  id                   String            @id @default(cuid())
+  organizationId       String
+  organization         Organization      @relation(fields: [organizationId], references: [id])
+  name                 String
+  startTime            String
+  endTime              String
+  graceTimeMinutes     Int               @default(15)
+  breakDurationMinutes Int               @default(60)
+  isActive             Boolean           @default(true)
+  assignments          ShiftAssignment[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  @@index([organizationId])
+}
+
+model ShiftAssignment {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  shiftId        String
+  shift          Shift     @relation(fields: [shiftId], references: [id])
+  effectiveFrom  DateTime
+  effectiveUntil DateTime?
+  isActive       Boolean   @default(true)
+  timeLogs       TimeLog[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([userId, isActive])
+  @@index([shiftId])
+}
+
+model TimeLog {
+  id                    String           @id @default(cuid())
+  userId                String
+  user                  User             @relation(fields: [userId], references: [id])
+  shiftAssignmentId     String?
+  shiftAssignment       ShiftAssignment? @relation(fields: [shiftAssignmentId], references: [id])
+  clockIn               DateTime
+  clockOut              DateTime?
+  scheduledStart        DateTime?
+  scheduledEnd          DateTime?
+  lateByMinutes         Int              @default(0)
+  earlyDepartureMinutes Int              @default(0)
+  totalHours            Float?
+  overtimeHours         Float            @default(0)
+  status                TimeLogStatus    @default(PENDING_APPROVAL)
+  invoiceId             String?
+  invoice               Invoice?         @relation(fields: [invoiceId], references: [id])
+  notes                 String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([shiftAssignmentId])
+  @@index([invoiceId])
+}
+
+model Leave {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation("UserLeaves", fields: [userId], references: [id])
+  leaveType       LeaveType
+  startDate       DateTime
+  endDate         DateTime
+  totalDays       Float
+  reason          String
+  status          LeaveStatus @default(PENDING)
+  appliedToId     String?
+  appliedTo       User?       @relation("LeaveApprover", fields: [appliedToId], references: [id])
+  approvedById    String?
+  approvedBy      User?       @relation("LeaveApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime?
+  rejectionReason String?
+  isHalfDay       Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status, appliedToId])
+}
+
+model Ticket {
+  id             String              @id @default(cuid())
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id])
+  requesterId    String
+  requester      User                @relation("RequestedTickets", fields: [requesterId], references: [id])
+  assigneeId     String?
+  assignee       User?               @relation("AssignedTickets", fields: [assigneeId], references: [id])
+  assignedById   String?
+  assignedBy     User?               @relation("AssignedByTickets", fields: [assignedById], references: [id])
+  title          String
+  description    String
+  priority       TicketPriority      @default(MEDIUM)
+  status         TicketStatus        @default(OPEN)
+  assignedAt     DateTime?
+  resolutionNote String?
+  resolvedAt     DateTime?
+  comments       TicketComment[]
+  statusEvents   TicketStatusEvent[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([organizationId, status, priority])
+  @@index([requesterId, status])
+  @@index([assigneeId, status])
+}
+
+model TicketComment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation("TicketCommentsAuthor", fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ticketId, createdAt])
+  @@index([authorId])
+}
+
+model TicketStatusEvent {
+  id          String        @id @default(cuid())
+  ticketId    String
+  ticket      Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actorUserId String
+  actorUser   User          @relation("TicketStatusEventActor", fields: [actorUserId], references: [id])
+  fromStatus  TicketStatus?
+  toStatus    TicketStatus
+  note        String?
+  createdAt   DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
+  @@index([actorUserId])
+}
+
+model Lead {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdById    String?
+  createdBy      User?        @relation("LeadCreator", fields: [createdById], references: [id])
+  name           String
+  company        String
+  email          String
+  phone          String?
+  source         String?
+  notes          String?
+  status         LeadStatus   @default(NEW)
+  expectedAmount Float?
+  currency       Currency     @default(INR)
+  quotations     Quotation[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, status])
+  @@index([email])
+}
+
+model Quotation {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  organization    Organization           @relation(fields: [organizationId], references: [id])
+  leadId          String
+  lead            Lead                   @relation(fields: [leadId], references: [id])
+  quoteNumber     String                 @unique
+  publicToken     String                 @unique
+  title           String
+  description     String
+  amount          Float
+  currency        Currency               @default(INR)
+  taxPercent      Float                  @default(0)
+  discountPercent Float                  @default(0)
+  totalAmount     Float
+  lineItems       Json?
+  designer        Json?
+  validUntil      DateTime?
+  status          QuotationStatus        @default(DRAFT)
+  sentAt          DateTime?
+  respondedAt     DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  approvalNote    String?
+  rejectionNote   String?
+  createdById     String
+  createdBy       User                   @relation("QuotationCreator", fields: [createdById], references: [id])
+  updatedById     String?
+  updatedBy       User?                  @relation("QuotationUpdater", fields: [updatedById], references: [id])
+  events          QuotationStatusEvent[]
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([organizationId, status])
+  @@index([leadId, status])
+  @@index([publicToken])
+}
+
+model QuotationStatusEvent {
+  id          String           @id @default(cuid())
+  quotationId String
+  quotation   Quotation        @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  actorUserId String?
+  actorUser   User?            @relation("QuotationStatusEventActor", fields: [actorUserId], references: [id])
+  actorLabel  String?
+  fromStatus  QuotationStatus?
+  toStatus    QuotationStatus
+  note        String?
+  createdAt   DateTime         @default(now())
+
+  @@index([quotationId, createdAt])
+  @@index([actorUserId])
+}
+
+model SubscriptionPlan {
+  id               String                        @id @default(cuid())
+  code             String                        @unique
+  name             String
+  description      String?
+  price            Float
+  currency         Currency                      @default(USD)
+  interval         SubscriptionInterval
+  trialDays        Int                           @default(14)
+  employeeLimit    Int?
+  features         Json?
+  isActive         Boolean                       @default(true)
+  sortOrder        Int                           @default(0)
+  subscriptions    OrganizationSubscription[]
+  checkoutSessions SubscriptionCheckoutSession[]
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+model OrganizationSubscription {
+  id                     String                         @id @default(cuid())
+  organizationId         String                         @unique
+  organization           Organization                   @relation(fields: [organizationId], references: [id])
+  planId                 String
+  plan                   SubscriptionPlan               @relation(fields: [planId], references: [id])
+  provider               BillingProvider
+  status                 OrganizationSubscriptionStatus @default(TRIALING)
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  trialStart             DateTime?
+  trialEnd               DateTime?
+  canceledAt             DateTime?
+  metadata               Json?
+  createdByUserId        String?
+  createdByUser          User?                          @relation("OrganizationSubscriptionCreator", fields: [createdByUserId], references: [id])
+  events                 SubscriptionEvent[]
+  createdAt              DateTime                       @default(now())
+  updatedAt              DateTime                       @updatedAt
+
+  @@index([planId])
+  @@index([status])
+  @@index([providerSubscriptionId])
+}
+
+model SubscriptionCheckoutSession {
+  id                String                     @id @default(cuid())
+  token             String                     @unique
+  organizationId    String
+  organization      Organization               @relation(fields: [organizationId], references: [id])
+  planId            String
+  plan              SubscriptionPlan           @relation(fields: [planId], references: [id])
+  provider          BillingProvider
+  providerSessionId String?                    @unique
+  status            SubscriptionCheckoutStatus @default(PENDING)
+  checkoutUrl       String
+  successUrl        String?
+  cancelUrl         String?
+  expiresAt         DateTime
+  completedAt       DateTime?
+  createdByUserId   String
+  createdByUser     User                       @relation("SubscriptionSessionCreator", fields: [createdByUserId], references: [id])
+  events            SubscriptionEvent[]
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  @@index([organizationId, status])
+  @@index([planId])
+  @@index([expiresAt])
+}
+
+model SubscriptionEvent {
+  id                         String                       @id @default(cuid())
+  organizationId             String
+  organization               Organization                 @relation(fields: [organizationId], references: [id])
+  organizationSubscriptionId String?
+  organizationSubscription   OrganizationSubscription?    @relation(fields: [organizationSubscriptionId], references: [id], onDelete: SetNull)
+  checkoutSessionId          String?
+  checkoutSession            SubscriptionCheckoutSession? @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull)
+  type                       SubscriptionEventType
+  provider                   BillingProvider?
+  payload                    Json?
+  createdAt                  DateTime                     @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([organizationSubscriptionId])
+  @@index([checkoutSessionId])
+}
+
+model Wallet {
+  id             String              @id @default(cuid())
+  userId         String              @unique
+  user           User                @relation(fields: [userId], references: [id])
+  balance        Float               @default(0)
+  currency       Currency            @default(INR)
+  totalEarned    Float               @default(0)
+  totalWithdrawn Float               @default(0)
+  isActive       Boolean             @default(true)
+  transactions   WalletTransaction[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+}
+
+model WalletTransaction {
+  id            String            @id @default(cuid())
+  walletId      String
+  wallet        Wallet            @relation(fields: [walletId], references: [id])
+  amount        Float
+  currency      Currency
+  type          TransactionType
+  status        TransactionStatus @default(PENDING)
+  description   String
+  payoutId      String?
+  processedAt   DateTime?
+  failureReason String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([walletId])
+}
+
+model QueueJob {
+  id          String         @id @default(cuid())
+  type        String
+  payload     Json
+  status      QueueJobStatus @default(PENDING)
+  attempts    Int            @default(0)
+  maxAttempts Int            @default(3)
+  availableAt DateTime       @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  lastError   String?
+  processedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status, availableAt])
+  @@index([type])
+}
+
+model Invoice {
+  id               String        @id @default(cuid())
+  invoiceNumber    String        @unique
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  month            Int
+  year             Int
+  totalHours       Float         @default(0)
+  overtimeHours    Float         @default(0)
+  basicAmount      Float         @default(0)
+  overtimeAmount   Float         @default(0)
+  grossAmount      Float         @default(0)
+  currency         Currency      @default(INR)
+  templateKey      String?
+  renderedHtml     String?
+  status           InvoiceStatus @default(DRAFT)
+  paymentReference String?
+  paidAt           DateTime?
+  timelogs         TimeLog[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([userId, month, year])
+  @@index([month, year])
+  @@index([status])
+}
+
+model NotificationLog {
+  id        String             @id @default(cuid())
+  userId    String?
+  user      User?              @relation(fields: [userId], references: [id])
+  channel   String
+  title     String
+  message   String
+  locale    String?
+  metadata  Json?
+  status    NotificationStatus @default(QUEUED)
+  error     String?
+  sentAt    DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+model ExchangeRateSnapshot {
+  id           String   @id @default(cuid())
+  baseCurrency Currency @default(INR)
+  source       String
+  rates        Json
+  fetchedAt    DateTime
+  createdAt    DateTime @default(now())
+
+  conversions CurrencyConversion[]
+
+  @@index([baseCurrency, fetchedAt])
+}
+
+model CurrencyConversion {
+  id              String                @id @default(cuid())
+  snapshotId      String?
+  snapshot        ExchangeRateSnapshot? @relation(fields: [snapshotId], references: [id])
+  amount          Float
+  fromCurrency    Currency
+  toCurrency      Currency
+  convertedAmount Float
+  exchangeRate    Float
+  context         Json?
+  createdAt       DateTime              @default(now())
+
+  @@index([fromCurrency, toCurrency, createdAt])
+  @@index([snapshotId])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
