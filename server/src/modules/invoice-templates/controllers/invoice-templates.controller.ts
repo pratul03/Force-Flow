@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -75,6 +76,7 @@ const invoiceTemplateResponseExample = {
 
 @ApiTags('Invoice Templates')
 @Controller('invoice-templates')
+@UseGuards(JwtAuthGuard)
 export class InvoiceTemplatesController {
   constructor(private readonly invoiceTemplatesService: InvoiceTemplatesService) {}
 
@@ -101,8 +103,12 @@ export class InvoiceTemplatesController {
   @ApiForbiddenResponse({ description: 'Insufficient role permission' })
   async create(
     @Body() dto: CreateInvoiceTemplateDto,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<InvoiceTemplateResponseDto> {
-    return (await this.invoiceTemplatesService.create(dto)) as InvoiceTemplateResponseDto;
+    return (await this.invoiceTemplatesService.create(
+      dto,
+      req.user.organizationId,
+    )) as InvoiceTemplateResponseDto;
   }
 
   @Get()
@@ -135,8 +141,12 @@ export class InvoiceTemplatesController {
   })
   async findAll(
     @Query() query: InvoiceTemplateQueryDto,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<InvoiceTemplateResponseDto[]> {
-    return (await this.invoiceTemplatesService.findAll(query)) as InvoiceTemplateResponseDto[];
+    return (await this.invoiceTemplatesService.findAll(
+      query,
+      req.user.organizationId,
+    )) as InvoiceTemplateResponseDto[];
   }
 
   @Get(':id')
@@ -150,8 +160,14 @@ export class InvoiceTemplatesController {
     type: InvoiceTemplateResponseDto,
     schema: { example: invoiceTemplateResponseExample },
   })
-  async findOne(@Param('id') id: string): Promise<InvoiceTemplateResponseDto> {
-    return (await this.invoiceTemplatesService.findOne(id)) as InvoiceTemplateResponseDto;
+  async findOne(
+    @Param('id') id: string,
+    @Req() req: { user: { organizationId: string } },
+  ): Promise<InvoiceTemplateResponseDto> {
+    return (await this.invoiceTemplatesService.findOne(
+      id,
+      req.user.organizationId,
+    )) as InvoiceTemplateResponseDto;
   }
 
   @Patch(':id')
@@ -192,8 +208,13 @@ export class InvoiceTemplatesController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateInvoiceTemplateDto,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<InvoiceTemplateResponseDto> {
-    return (await this.invoiceTemplatesService.update(id, dto)) as InvoiceTemplateResponseDto;
+    return (await this.invoiceTemplatesService.update(
+      id,
+      dto,
+      req.user.organizationId,
+    )) as InvoiceTemplateResponseDto;
   }
 
   @Delete(':id')
@@ -217,7 +238,10 @@ export class InvoiceTemplatesController {
   })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   @ApiForbiddenResponse({ description: 'Insufficient role permission' })
-  remove(@Param('id') id: string): Promise<DeleteInvoiceTemplateResponseDto> {
-    return this.invoiceTemplatesService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @Req() req: { user: { organizationId: string } },
+  ): Promise<DeleteInvoiceTemplateResponseDto> {
+    return this.invoiceTemplatesService.remove(id, req.user.organizationId);
   }
 }
