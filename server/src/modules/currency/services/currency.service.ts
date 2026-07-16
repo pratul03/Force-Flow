@@ -1,11 +1,17 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { Currency, Prisma, QueueJob } from '@prisma/client';
+import { Currency, Prisma, QueueJob, Role } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../queue/services/queue.service';
 import { CurrencyHistoryQueryDto } from '../dto/currency-history-query.dto';
 
 @Injectable()
 export class CurrencyService implements OnModuleInit {
+  private readonly adminRoles = new Set<Role>([
+    Role.SUPER_ADMIN,
+    Role.ADMIN,
+    Role.HR_MANAGER,
+  ]);
+
   private readonly inrBaseRates: Record<Currency, number> = {
     INR: 1,
     USD: 0.012,
@@ -42,6 +48,7 @@ export class CurrencyService implements OnModuleInit {
     from: Currency,
     to: Currency,
     context?: Record<string, unknown>,
+    actor?: { actorUserId: string; organizationId: string; role: Role },
   ) {
     const snapshot = await this.getLatestSnapshot(Currency.INR);
     const rates = this.extractRates(snapshot.rates);
@@ -52,6 +59,16 @@ export class CurrencyService implements OnModuleInit {
       from === to ? amount : this.round((amount / fromRate) * toRate, 6);
     const exchangeRate = amount === 0 ? 0 : this.round(convertedAmount / amount, 8);
 
+    const mergedContext = {
+      ...(context ?? {}),
+      ...(actor
+        ? {
+            actorUserId: actor.actorUserId,
+            organizationId: actor.organizationId,
+          }
+        : {}),
+    };
+
     const conversion = await this.prisma.currencyConversion.create({
       data: {
         snapshotId: snapshot.id,
@@ -60,7 +77,7 @@ export class CurrencyService implements OnModuleInit {
         toCurrency: to,
         convertedAmount,
         exchangeRate,
-        context: context ? (context as Prisma.InputJsonValue) : undefined,
+        context: mergedContext as Prisma.InputJsonValue,
       },
     });
 
@@ -81,16 +98,33 @@ export class CurrencyService implements OnModuleInit {
     };
   }
 
-  requestRateSync(source = 'manual') {
+  requestRateSync(
+    source = 'manual',
+    actor?: { actorUserId: string; organizationId: string },
+  ) {
     return this.queueService.enqueue({
       type: 'currency.sync-rates',
-      payload: { source },
+      payload: {
+        source,
+        ...(actor
+          ? {
+              actorUserId: actor.actorUserId,
+              organizationId: actor.organizationId,
+            }
+          : {}),
+      },
       maxAttempts: 3,
     });
   }
 
-  listConversionHistory(query: CurrencyHistoryQueryDto) {
-    return this.prisma.currencyConversion.findMany({
+  async listConversionHistory(
+    query: CurrencyHistoryQueryDto,
+    actor: { actorUserId: string; organizationId: string; role: Role },
+  ) {
+    const fetchSize = Math.min((query.limit ?? 100) * 5, 1000);
+    const isAdmin = this.adminRoles.has(actor.role);
+
+    const conversions = await this.prisma.currencyConversion.findMany({
       include: {
         snapshot: {
           select: {
@@ -102,8 +136,28 @@ export class CurrencyService implements OnModuleInit {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: query.limit ?? 100,
+      take: fetchSize,
     });
+
+    return conversions
+      .filter((conversion) => {
+        const context = conversion.context;
+        if (!context || typeof context !== 'object' || Array.isArray(context)) {
+          return false;
+        }
+
+        const record = context as Record<string, unknown>;
+        if (record.organizationId !== actor.organizationId) {
+          return false;
+        }
+
+        if (isAdmin) {
+          return true;
+        }
+
+        return record.actorUserId === actor.actorUserId;
+      })
+      .slice(0, query.limit ?? 100);
   }
 
   private async processSyncRatesJob(job: QueueJob) {
