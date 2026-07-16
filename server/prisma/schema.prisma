@@ -281,6 +281,11 @@ model Department {
   organization   Organization @relation(fields: [organizationId], references: [id])
   name           String
   code           String       @unique
+  parentId       String?
+  parent         Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children       Department[] @relation("DepartmentHierarchy")
+  managerId      String?
+  manager        User?        @relation("DepartmentManager", fields: [managerId], references: [id])
   users          User[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -294,6 +299,9 @@ model Designation {
   organization   Organization @relation(fields: [organizationId], references: [id])
   name           String
   code           String
+  minSalary      Float?
+  maxSalary      Float?
+  currency       String       @default("USD")
   users          User[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -453,6 +461,10 @@ model User {
   invoices                    Invoice[]
   notificationLogs            NotificationLog[]
   refreshTokens               RefreshToken[]
+  passwordResetToken          PasswordResetToken?
+  bankDetails                 UserBankDetails?
+  compensation                UserCompensation?
+  managedDepartments          Department[]                  @relation("DepartmentManager")
   mailConnections             MailConnection[]
   mailOAuthSessions           MailOAuthSession[]
   createdAt                   DateTime                      @default(now())
@@ -539,6 +551,12 @@ model TimeLog {
   shiftAssignment       ShiftAssignment? @relation(fields: [shiftAssignmentId], references: [id])
   clockIn               DateTime
   clockOut              DateTime?
+  clockInLatitude       Float?
+  clockInLongitude      Float?
+  clockInPhotoUrl       String?
+  clockOutLatitude      Float?
+  clockOutLongitude     Float?
+  clockOutPhotoUrl      String?
   scheduledStart        DateTime?
   scheduledEnd          DateTime?
   lateByMinutes         Int              @default(0)
@@ -549,12 +567,26 @@ model TimeLog {
   invoiceId             String?
   invoice               Invoice?         @relation(fields: [invoiceId], references: [id])
   notes                 String?
+  breaks                TimeLogBreak[]
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
   @@index([userId])
   @@index([shiftAssignmentId])
   @@index([invoiceId])
+}
+
+model TimeLogBreak {
+  id          String    @id @default(cuid())
+  timeLogId   String
+  timeLog     TimeLog   @relation(fields: [timeLogId], references: [id], onDelete: Cascade)
+  startTime   DateTime
+  endTime     DateTime?
+  reason      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([timeLogId])
 }
 
 model Leave {
@@ -944,4 +976,44 @@ model RefreshToken {
 
   @@index([userId, revokedAt])
   @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model UserBankDetails {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountName   String
+  accountNumber String
+  bankName      String
+  swiftCode     String?
+  routingNumber String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum PayFrequency {
+  HOURLY
+  MONTHLY
+  YEARLY
+}
+
+model UserCompensation {
+  id              String       @id @default(cuid())
+  userId          String       @unique
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salaryAmount    Float
+  salaryCurrency  Currency
+  payFrequency    PayFrequency
+  effectiveDate   DateTime
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 }
