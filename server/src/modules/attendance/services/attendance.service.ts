@@ -1,18 +1,31 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { QueueJob, TimeLogStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../queue/services/queue.service';
 import { AttendanceQueryDto } from '../dto/attendance-query.dto';
 import { ClockInDto } from '../dto/clock-in.dto';
 import { ClockOutDto } from '../dto/clock-out.dto';
+import { UpdateTimeLogStatusDto } from '../dto/update-timelog-status.dto';
+import { UpdateTimelogDto } from '../dto/update-timelog.dto';
+import { StartBreakDto } from '../dto/start-break.dto';
+import { EndBreakDto } from '../dto/end-break.dto';
 
 @Injectable()
 export class AttendanceService implements OnModuleInit {
+  private readonly elevatedRoles = new Set<Role>([
+    Role.SUPER_ADMIN,
+    Role.ADMIN,
+    Role.HR_MANAGER,
+    Role.MANAGER,
+  ]);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
@@ -28,7 +41,9 @@ export class AttendanceService implements OnModuleInit {
     );
   }
 
-  async clockIn(dto: ClockInDto) {
+  async clockIn(dto: ClockInDto, actorOrganizationId: string) {
+    await this.assertUserInOrganization(dto.userId, actorOrganizationId);
+
     const existingOpenLog = await this.prisma.timeLog.findFirst({
       where: {
         userId: dto.userId,
@@ -56,12 +71,17 @@ export class AttendanceService implements OnModuleInit {
         scheduledStart,
         scheduledEnd,
         lateByMinutes,
+        clockInLatitude: dto.latitude,
+        clockInLongitude: dto.longitude,
+        clockInPhotoUrl: dto.photoUrl,
         status: TimeLogStatus.PENDING_APPROVAL,
       },
     });
   }
 
-  async clockOut(dto: ClockOutDto) {
+  async clockOut(dto: ClockOutDto, actorOrganizationId: string) {
+    await this.assertUserInOrganization(dto.userId, actorOrganizationId);
+
     const openLog = await this.prisma.timeLog.findFirst({
       where: {
         userId: dto.userId,
@@ -113,6 +133,9 @@ export class AttendanceService implements OnModuleInit {
       where: { id: openLog.id },
       data: {
         clockOut: clockOutAt,
+        clockOutLatitude: dto.latitude,
+        clockOutLongitude: dto.longitude,
+        clockOutPhotoUrl: dto.photoUrl,
         totalHours,
         overtimeHours,
         earlyDepartureMinutes,
@@ -120,7 +143,13 @@ export class AttendanceService implements OnModuleInit {
     });
   }
 
-  getUserAttendance(userId: string, query: AttendanceQueryDto) {
+  async getUserAttendance(
+    userId: string,
+    query: AttendanceQueryDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    await this.assertUserAccess(userId, actor);
+
     const fromDate = query.fromDate ? new Date(query.fromDate) : undefined;
     const toDate = query.toDate ? new Date(query.toDate) : undefined;
 
@@ -141,7 +170,44 @@ export class AttendanceService implements OnModuleInit {
     });
   }
 
-  async getDailySummary(userId: string, date?: string) {
+  async updateTimeLogStatus(
+    timeLogId: string,
+    dto: UpdateTimeLogStatusDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    if (!this.elevatedRoles.has(actor.role as Role)) {
+      throw new ForbiddenException('Only managers can update timelog status');
+    }
+
+    const timeLog = await this.prisma.timeLog.findUnique({
+      where: { id: timeLogId },
+      include: { user: true },
+    });
+
+    if (!timeLog) {
+      throw new NotFoundException('TimeLog not found');
+    }
+
+    if (timeLog.user.organizationId !== actor.organizationId) {
+      throw new ForbiddenException('You can only update timelogs for users in your organization');
+    }
+
+    return this.prisma.timeLog.update({
+      where: { id: timeLogId },
+      data: {
+        status: dto.status,
+        ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+      },
+    });
+  }
+
+  async getDailySummary(
+    userId: string,
+    date: string | undefined,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    await this.assertUserAccess(userId, actor);
+
     const target = date ? new Date(date) : new Date();
     const { start, end } = this.getDayBounds(target);
     const holiday = await this.findHolidayForUserOnDate(userId, start);
@@ -174,6 +240,163 @@ export class AttendanceService implements OnModuleInit {
       overtimeHours,
       lateByMinutes,
     };
+  }
+
+  async adjustTimeLog(
+    timeLogId: string,
+    dto: UpdateTimelogDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    if (!this.elevatedRoles.has(actor.role as Role)) {
+      throw new ForbiddenException('Only managers can adjust timelogs');
+    }
+
+    const timeLog = await this.prisma.timeLog.findUnique({
+      where: { id: timeLogId },
+      include: { user: true },
+    });
+
+    if (!timeLog) {
+      throw new NotFoundException('TimeLog not found');
+    }
+
+    if (timeLog.user.organizationId !== actor.organizationId) {
+      throw new ForbiddenException('You can only update timelogs for users in your organization');
+    }
+
+    const updates: any = {};
+    if (dto.notes !== undefined) updates.notes = dto.notes;
+    
+    const clockInAt = dto.clockIn ? new Date(dto.clockIn) : timeLog.clockIn;
+    const clockOutAt = dto.clockOut ? new Date(dto.clockOut) : timeLog.clockOut;
+
+    if (dto.clockIn !== undefined) updates.clockIn = clockInAt;
+    if (dto.clockOut !== undefined) updates.clockOut = clockOutAt;
+
+    // Recalculate hours if clockOut is present
+    if (clockOutAt && (dto.clockIn !== undefined || dto.clockOut !== undefined)) {
+      const workDate = clockInAt;
+      const holiday = await this.findHolidayForUserOnDate(timeLog.userId, workDate);
+      
+      const breaks = await this.prisma.timeLogBreak.findMany({ where: { timeLogId } });
+      let breakMs = 0;
+      for (const b of breaks) {
+        if (b.endTime) {
+          breakMs += b.endTime.getTime() - b.startTime.getTime();
+        }
+      }
+
+      const totalHours = Math.max(0, (clockOutAt.getTime() - clockInAt.getTime() - breakMs) / (1000 * 60 * 60));
+
+      const shiftAssignment = timeLog.shiftAssignmentId
+        ? await this.prisma.shiftAssignment.findUnique({
+            where: { id: timeLog.shiftAssignmentId },
+            include: { shift: true },
+          })
+        : null;
+
+      const standardHours = shiftAssignment?.shift
+        ? this.calculateStandardHours(
+            shiftAssignment.shift.startTime,
+            shiftAssignment.shift.endTime,
+            shiftAssignment.shift.breakDurationMinutes,
+          )
+        : 8;
+
+      const scheduledEnd = timeLog.scheduledEnd;
+      const earlyDepartureMinutes = holiday
+        ? 0
+        : scheduledEnd
+          ? Math.max(
+              0,
+              Math.floor((scheduledEnd.getTime() - clockOutAt.getTime()) / (1000 * 60)),
+            )
+          : 0;
+
+      const overtimeHours = holiday
+        ? Math.max(0, totalHours)
+        : Math.max(0, totalHours - standardHours);
+
+      updates.totalHours = totalHours;
+      updates.overtimeHours = overtimeHours;
+      updates.earlyDepartureMinutes = earlyDepartureMinutes;
+    }
+
+    return this.prisma.timeLog.update({
+      where: { id: timeLogId },
+      data: updates,
+    });
+  }
+
+  async startBreak(userId: string, dto: StartBreakDto, actorOrganizationId: string) {
+    await this.assertUserInOrganization(userId, actorOrganizationId);
+
+    const openLog = await this.prisma.timeLog.findFirst({
+      where: {
+        userId,
+        clockOut: null,
+      },
+      orderBy: { clockIn: 'desc' },
+    });
+
+    if (!openLog) {
+      throw new BadRequestException('You must be clocked in to start a break');
+    }
+
+    const openBreak = await this.prisma.timeLogBreak.findFirst({
+      where: {
+        timeLogId: openLog.id,
+        endTime: null,
+      },
+    });
+
+    if (openBreak) {
+      throw new BadRequestException('You are already on a break');
+    }
+
+    return this.prisma.timeLogBreak.create({
+      data: {
+        timeLogId: openLog.id,
+        startTime: new Date(),
+        reason: dto.reason,
+      },
+    });
+  }
+
+  async endBreak(userId: string, dto: EndBreakDto, actorOrganizationId: string) {
+    await this.assertUserInOrganization(userId, actorOrganizationId);
+
+    const openLog = await this.prisma.timeLog.findFirst({
+      where: {
+        userId,
+        clockOut: null,
+      },
+      orderBy: { clockIn: 'desc' },
+    });
+
+    if (!openLog) {
+      throw new BadRequestException('No active clock-in found');
+    }
+
+    const openBreak = await this.prisma.timeLogBreak.findFirst({
+      where: {
+        timeLogId: openLog.id,
+        endTime: null,
+      },
+      orderBy: { startTime: 'desc' }
+    });
+
+    if (!openBreak) {
+      throw new BadRequestException('You are not currently on a break');
+    }
+
+    return this.prisma.timeLogBreak.update({
+      where: { id: openBreak.id },
+      data: {
+        endTime: new Date(),
+        ...(dto.reason !== undefined ? { reason: dto.reason } : {}),
+      },
+    });
   }
 
   private async calculateDailyMetrics(date?: string) {
@@ -349,5 +572,36 @@ export class AttendanceService implements OnModuleInit {
     const date = new Date(baseDate);
     date.setUTCHours(hh || 0, mm || 0, 0, 0);
     return date;
+  }
+
+  private async assertUserInOrganization(userId: string, organizationId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found in your organization');
+    }
+  }
+
+  private async assertUserAccess(
+    targetUserId: string,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    await this.assertUserInOrganization(targetUserId, actor.organizationId);
+
+    if (targetUserId === actor.sub) {
+      return;
+    }
+
+    if (!this.elevatedRoles.has(actor.role as Role)) {
+      throw new ForbiddenException('You can only access your own attendance');
+    }
   }
 }
