@@ -1,10 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Currency, Role, UserStatus } from '@prisma/client';
 import { compare, hash } from 'bcryptjs';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
+import { RegisterDto } from '../dto/register.dto';
 
 type TokenPayload = {
   sub: string;
@@ -61,6 +63,73 @@ export class AuthService {
         lastName: user.lastName,
         role: user.role,
         organizationId: user.organizationId,
+      },
+    };
+  }
+
+  async register(dto: RegisterDto) {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new BadRequestException('Email is already in use');
+    }
+
+    const name = dto.name.trim();
+    if (!name) {
+      throw new BadRequestException('Name is required');
+    }
+
+    const firstName = name.split(' ')[0] ?? 'User';
+    const lastName = name.split(' ').slice(1).join(' ') || 'Account';
+    const organizationName =
+      dto.organizationName?.trim() || `${firstName} Organization`;
+
+    const password = await hash(dto.password, 10);
+    const employeeId = await this.generateEmployeeId();
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.create({
+        data: {
+          name: organizationName,
+          country: dto.country ?? 'India',
+          currency: dto.currency ?? Currency.INR,
+          timezone: 'Asia/Kolkata',
+        },
+      });
+
+      const user = await tx.user.create({
+        data: {
+          email: dto.email,
+          password,
+          firstName,
+          lastName,
+          employeeId,
+          organizationId: organization.id,
+          joiningDate: new Date(),
+          role: Role.ADMIN,
+          status: UserStatus.ACTIVE,
+        },
+      });
+
+      return { organization, user };
+    });
+
+    const tokens = await this.issueTokenPair(created.user);
+
+    return {
+      ...tokens,
+      tokenType: 'Bearer',
+      user: {
+        id: created.user.id,
+        email: created.user.email,
+        avatarUrl: created.user.avatarUrl,
+        firstName: created.user.firstName,
+        lastName: created.user.lastName,
+        role: created.user.role,
+        organizationId: created.user.organizationId,
       },
     };
   }
@@ -216,5 +285,24 @@ export class AuthService {
       unit === 'm' ? 60 * 1000 : unit === 'h' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
 
     return new Date(now + value * multiplier);
+  }
+
+  private async generateEmployeeId(): Promise<string> {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const suffix = `${Date.now()}`.slice(-6);
+      const random = Math.floor(Math.random() * 900 + 100);
+      const employeeId = `EMP${suffix}${random}`;
+
+      const exists = await this.prisma.user.findUnique({
+        where: { employeeId },
+        select: { id: true },
+      });
+
+      if (!exists) {
+        return employeeId;
+      }
+    }
+
+    throw new BadRequestException('Unable to generate employee id');
   }
 }
