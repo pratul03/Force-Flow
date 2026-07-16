@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
@@ -19,24 +20,34 @@ import { ScoreApplicationsDto } from '../dto/score-applications.dto';
 import { UpdateCandidateStageDto } from '../dto/update-candidate-stage.dto';
 
 @Controller('recruitment')
+@UseGuards(JwtAuthGuard)
 export class RecruitmentController {
   constructor(private readonly recruitmentService: RecruitmentService) {}
 
   @Get('status')
-  status(@Query('organizationId') organizationId?: string) {
-    return this.recruitmentService.getStatus(organizationId);
+  status(@Req() req: { user: { organizationId: string } }) {
+    return this.recruitmentService.getStatus(req.user.organizationId);
   }
 
   @Get('candidates')
-  listCandidates(@Query() query: RecruitmentCandidateQueryDto) {
-    return this.recruitmentService.listCandidates(query);
+  listCandidates(
+    @Query() query: RecruitmentCandidateQueryDto,
+    @Req() req: { user: { organizationId: string } },
+  ) {
+    return this.recruitmentService.listCandidates({
+      ...query,
+      organizationId: req.user.organizationId,
+    });
   }
 
   @Post('candidates')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER)
-  createCandidate(@Body() dto: CreateCandidateDto) {
-    return this.recruitmentService.createCandidate(dto);
+  createCandidate(@Body() dto: CreateCandidateDto, @Req() req: { user: { organizationId: string } }) {
+    return this.recruitmentService.createCandidate({
+      ...dto,
+      organizationId: req.user.organizationId,
+    });
   }
 
   @Patch('candidates/:id/stage')
@@ -52,7 +63,13 @@ export class RecruitmentController {
   @Post('score-applications')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER)
-  scoreApplications(@Body() dto: ScoreApplicationsDto) {
-    return this.recruitmentService.scoreApplications(dto);
+  scoreApplications(
+    @Body() dto: ScoreApplicationsDto,
+    @Req() req: { user: { organizationId: string } },
+  ) {
+    return this.recruitmentService.scoreApplications({
+      ...dto,
+      organizationId: req.user.organizationId,
+    });
   }
 }
