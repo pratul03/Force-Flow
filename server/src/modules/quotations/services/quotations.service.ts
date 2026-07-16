@@ -81,9 +81,12 @@ export class QuotationsService {
     });
   }
 
-  async findOne(id: string) {
-    const quotation = await this.prisma.quotation.findUnique({
-      where: { id },
+  async findOne(id: string, organizationId?: string) {
+    const quotation = await this.prisma.quotation.findFirst({
+      where: {
+        id,
+        ...(organizationId ? { organizationId } : {}),
+      },
       include: {
         lead: true,
         events: {
@@ -181,12 +184,12 @@ export class QuotationsService {
       return quotation;
     });
 
-    return this.findOne(created.id);
+    return this.findOne(created.id, actor.organizationId);
   }
 
   async update(id: string, dto: UpdateQuotationDto) {
-    const quotation = await this.findOne(id);
     const actor = await this.getActorOrThrow(dto.actorUserId);
+    const quotation = await this.findOne(id, actor.organizationId);
 
     this.assertActorPermission(
       actor.organizationId,
@@ -254,12 +257,12 @@ export class QuotationsService {
       },
     });
 
-    return this.findOne(updated.id);
+    return this.findOne(updated.id, actor.organizationId);
   }
 
   async remove(id: string, actorUserId: string) {
-    const quotation = await this.findOne(id);
     const actor = await this.getActorOrThrow(actorUserId);
+    const quotation = await this.findOne(id, actor.organizationId);
 
     this.assertActorPermission(
       actor.organizationId,
@@ -276,8 +279,8 @@ export class QuotationsService {
   }
 
   async send(id: string, dto: SendQuotationDto) {
-    const quotation = await this.findOne(id);
     const actor = await this.getActorOrThrow(dto.actorUserId);
+    const quotation = await this.findOne(id, actor.organizationId);
 
     this.assertActorPermission(
       actor.organizationId,
@@ -343,7 +346,7 @@ export class QuotationsService {
     });
 
     return {
-      quotation: await this.findOne(id),
+      quotation: await this.findOne(id, actor.organizationId),
       publicUrl,
     };
   }
@@ -371,8 +374,8 @@ export class QuotationsService {
   }
 
   async downloadPdfForAdmin(id: string, actorUserId: string) {
-    const quotation = await this.findOne(id);
     const actor = await this.getActorOrThrow(actorUserId);
+    const quotation = await this.findOne(id, actor.organizationId);
 
     this.assertActorPermission(
       actor.organizationId,
@@ -405,8 +408,8 @@ export class QuotationsService {
     dto: ManualQuotationActionDto,
     nextStatus: 'APPROVED' | 'REJECTED',
   ) {
-    const quotation = await this.findOne(id);
     const actor = await this.getActorOrThrow(dto.actorUserId);
+    const quotation = await this.findOne(id, actor.organizationId);
 
     this.assertActorPermission(
       actor.organizationId,
@@ -442,7 +445,7 @@ export class QuotationsService {
       }),
     ]);
 
-    return this.findOne(id);
+    return this.findOne(id, actor.organizationId);
   }
 
   private async transitionFromPublic(
