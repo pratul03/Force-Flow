@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -16,7 +17,6 @@ import { JwtAuthGuard } from '../../../common/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/auth/guards/roles.guard';
 import { Roles } from '../../../common/auth/roles.decorator';
 import { CreateQuotationDto } from '../dto/create-quotation.dto';
-import { DownloadQuotationPdfQueryDto } from '../dto/download-quotation-pdf-query.dto';
 import { ManualQuotationActionDto } from '../dto/manual-quotation-action.dto';
 import { PublicQuotationResponseDto } from '../dto/public-quotation-response.dto';
 import { QuotationsQueryDto } from '../dto/quotations-query.dto';
@@ -64,68 +64,103 @@ export class QuotationsController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@Query() query: QuotationsQueryDto) {
-    return this.quotationsService.findAll(query);
+  findAll(@Query() query: QuotationsQueryDto, @Req() req: { user: { organizationId: string } }) {
+    return this.quotationsService.findAll({
+      ...query,
+      organizationId: req.user.organizationId,
+    });
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  findOne(@Param('id') id: string) {
-    return this.quotationsService.findOne(id);
+  findOne(@Param('id') id: string, @Req() req: { user: { organizationId: string } }) {
+    return this.quotationsService.findOne(id, req.user.organizationId);
   }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER, Role.MANAGER)
-  create(@Body() dto: CreateQuotationDto) {
-    return this.quotationsService.create(dto);
+  create(@Body() dto: CreateQuotationDto, @Req() req: { user: { sub: string; organizationId: string } }) {
+    return this.quotationsService.create({
+      ...dto,
+      actorUserId: req.user.sub,
+      organizationId: req.user.organizationId,
+    });
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER, Role.MANAGER)
-  update(@Param('id') id: string, @Body() dto: UpdateQuotationDto) {
-    return this.quotationsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateQuotationDto,
+    @Req() req: { user: { sub: string } },
+  ) {
+    return this.quotationsService.update(id, {
+      ...dto,
+      actorUserId: req.user.sub,
+    });
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER, Role.MANAGER)
-  remove(@Param('id') id: string, @Query('actorUserId') actorUserId: string) {
-    return this.quotationsService.remove(id, actorUserId);
+  remove(@Param('id') id: string, @Req() req: { user: { sub: string } }) {
+    return this.quotationsService.remove(id, req.user.sub);
   }
 
   @Post(':id/send')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER, Role.MANAGER)
-  send(@Param('id') id: string, @Body() dto: SendQuotationDto) {
-    return this.quotationsService.send(id, dto);
+  send(
+    @Param('id') id: string,
+    @Body() dto: SendQuotationDto,
+    @Req() req: { user: { sub: string } },
+  ) {
+    return this.quotationsService.send(id, {
+      ...dto,
+      actorUserId: req.user.sub,
+    });
   }
 
   @Post(':id/manual-approve')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER, Role.MANAGER)
-  manualApprove(@Param('id') id: string, @Body() dto: ManualQuotationActionDto) {
-    return this.quotationsService.manualApprove(id, dto);
+  manualApprove(
+    @Param('id') id: string,
+    @Body() dto: ManualQuotationActionDto,
+    @Req() req: { user: { sub: string } },
+  ) {
+    return this.quotationsService.manualApprove(id, {
+      ...dto,
+      actorUserId: req.user.sub,
+    });
   }
 
   @Post(':id/manual-reject')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER, Role.MANAGER)
-  manualReject(@Param('id') id: string, @Body() dto: ManualQuotationActionDto) {
-    return this.quotationsService.manualReject(id, dto);
+  manualReject(
+    @Param('id') id: string,
+    @Body() dto: ManualQuotationActionDto,
+    @Req() req: { user: { sub: string } },
+  ) {
+    return this.quotationsService.manualReject(id, {
+      ...dto,
+      actorUserId: req.user.sub,
+    });
   }
 
   @Get(':id/pdf')
   @UseGuards(JwtAuthGuard)
   async adminPdf(
     @Param('id') id: string,
-    @Query() query: DownloadQuotationPdfQueryDto,
+    @Req() req: { user: { sub: string } },
     @Res() response: Response,
   ) {
     const pdf = await this.quotationsService.downloadPdfForAdmin(
       id,
-      query.actorUserId,
+      req.user.sub,
     );
 
     response.setHeader('Content-Type', 'application/pdf');
