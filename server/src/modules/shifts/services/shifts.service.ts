@@ -8,43 +8,63 @@ import { UpdateShiftDto } from '../dto/update-shift.dto';
 export class ShiftsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(dto: CreateShiftDto) {
-    return this.prisma.shift.create({ data: dto });
+  create(dto: CreateShiftDto, organizationId: string) {
+    return this.prisma.shift.create({
+      data: {
+        ...dto,
+        organizationId,
+      },
+    });
   }
 
-  findAll(organizationId?: string) {
+  findAll(organizationId: string) {
     return this.prisma.shift.findMany({
-      where: organizationId ? { organizationId } : undefined,
+      where: { organizationId },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
-    const shift = await this.prisma.shift.findUnique({ where: { id } });
+  async findOne(id: string, organizationId: string) {
+    const shift = await this.prisma.shift.findFirst({
+      where: {
+        id,
+        organizationId,
+      },
+    });
     if (!shift) {
       throw new NotFoundException('Shift not found');
     }
     return shift;
   }
 
-  async update(id: string, dto: UpdateShiftDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateShiftDto, organizationId: string) {
+    await this.findOne(id, organizationId);
     return this.prisma.shift.update({ where: { id }, data: dto });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
     await this.prisma.shift.delete({ where: { id } });
     return { deleted: true, id };
   }
 
-  async assignToUser(dto: AssignShiftDto) {
-    const user = await this.prisma.user.findUnique({ where: { id: dto.userId } });
+  async assignToUser(dto: AssignShiftDto, organizationId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: dto.userId,
+        organizationId,
+      },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const shift = await this.prisma.shift.findUnique({ where: { id: dto.shiftId } });
+    const shift = await this.prisma.shift.findFirst({
+      where: {
+        id: dto.shiftId,
+        organizationId,
+      },
+    });
     if (!shift) {
       throw new NotFoundException('Shift not found');
     }
@@ -73,9 +93,14 @@ export class ShiftsService {
     });
   }
 
-  listAssignments(userId?: string) {
+  listAssignments(userId: string | undefined, organizationId: string) {
     return this.prisma.shiftAssignment.findMany({
-      where: userId ? { userId } : undefined,
+      where: {
+        ...(userId ? { userId } : {}),
+        shift: {
+          organizationId,
+        },
+      },
       include: { shift: true, user: true },
       orderBy: { createdAt: 'desc' },
     });
