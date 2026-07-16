@@ -2,7 +2,7 @@ import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validat
 
 export class CreateShiftDto {
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   organizationId!: string;
 
   @IsString()
