@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { NotificationStatus, Prisma, QueueJob } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { renderTemplate } from '../../../common/templates/template-renderer';
@@ -19,19 +24,30 @@ export class NotificationsService implements OnModuleInit {
     });
   }
 
-  send(dto: CreateNotificationDto) {
+  async send(dto: CreateNotificationDto, organizationId: string) {
+    if (dto.userId) {
+      await this.assertUserInOrganization(dto.userId, organizationId);
+    }
+
     return this.queueService.enqueue({
       type: 'notification.send',
-      payload: { ...dto },
+      payload: { ...dto, organizationId },
       maxAttempts: 5,
     });
   }
 
-  listLogs(query: NotificationLogQueryDto) {
+  async listLogs(query: NotificationLogQueryDto, organizationId: string) {
+    if (query.userId) {
+      await this.assertUserInOrganization(query.userId, organizationId);
+    }
+
     return this.prisma.notificationLog.findMany({
       where: {
         ...(query.userId ? { userId: query.userId } : {}),
         ...(query.status ? { status: query.status } : {}),
+        user: {
+          organizationId,
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: query.limit ?? 100,
@@ -141,5 +157,19 @@ export class NotificationsService implements OnModuleInit {
     });
 
     return user?.organizationId ?? null;
+  }
+
+  private async assertUserInOrganization(userId: string, organizationId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId,
+      },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found in your organization');
+    }
   }
 }
