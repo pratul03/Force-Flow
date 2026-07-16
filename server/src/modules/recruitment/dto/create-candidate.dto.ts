@@ -11,7 +11,7 @@ import {
 
 export class CreateCandidateDto {
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   organizationId!: string;
 
   @IsString()
