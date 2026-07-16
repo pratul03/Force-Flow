@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
-import { subscriptionsApi } from "@/lib/api";
+import { subscriptionsApi } from "@/features/subscriptions/api";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function PricingPage() {
@@ -95,7 +95,7 @@ export default function PricingPage() {
 
     const response = await subscriptionsApi.createCheckoutSession({
       planCode,
-      provider: "RAZORPAY",
+      billingProvider: 'RAZORPAY' as any,
     });
 
     if (!response.success || !response.data) {
