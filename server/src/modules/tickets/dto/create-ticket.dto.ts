@@ -3,9 +3,11 @@ import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-valida
 
 export class CreateTicketDto {
   @IsString()
+  @IsOptional()
   organizationId!: string;
 
   @IsString()
+  @IsOptional()
   requesterId!: string;
 
   @IsString()
