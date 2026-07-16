@@ -36,7 +36,7 @@ export class CreateUserDto {
   employeeId!: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   organizationId!: string;
 
   @IsDateString()
