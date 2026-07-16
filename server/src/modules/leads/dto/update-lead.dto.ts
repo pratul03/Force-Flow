@@ -11,6 +11,7 @@ import {
 
 export class UpdateLeadDto {
   @IsString()
+  @IsOptional()
   actorUserId!: string;
 
   @IsString()
