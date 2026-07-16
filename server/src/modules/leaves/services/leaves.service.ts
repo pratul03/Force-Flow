@@ -1,9 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { LeaveStatus } from '@prisma/client';
+import { LeaveStatus, Role } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../queue/services/queue.service';
 import { CreateLeaveDto } from '../dto/create-leave.dto';
@@ -15,16 +16,35 @@ import { UpdateLeaveDto } from '../dto/update-leave.dto';
 
 @Injectable()
 export class LeavesService {
+  private readonly elevatedRoles = new Set<Role>([
+    Role.SUPER_ADMIN,
+    Role.ADMIN,
+    Role.HR_MANAGER,
+    Role.MANAGER,
+  ]);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
   ) {}
 
-  create(dto: CreateLeaveDto) {
-    return this.apply(dto);
+  create(
+    dto: CreateLeaveDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    return this.apply(dto, actor);
   }
 
-  async apply(dto: CreateLeaveDto) {
+  async apply(
+    dto: CreateLeaveDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    await this.assertUserAccess(dto.userId, actor);
+
+    if (dto.appliedToId) {
+      await this.assertUserInOrganization(dto.appliedToId, actor.organizationId);
+    }
+
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
 
@@ -78,10 +98,24 @@ export class LeavesService {
     return leave;
   }
 
-  findAll(query: LeavesQueryDto) {
+  async findAll(
+    query: LeavesQueryDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    const scopedUserId = query.userId ?? this.defaultUserScope(actor);
+
+    if (scopedUserId) {
+      await this.assertUserAccess(scopedUserId, actor);
+    }
+
+    if (query.approverId) {
+      await this.assertUserAccess(query.approverId, actor);
+    }
+
     return this.prisma.leave.findMany({
       where: {
-        ...(query.userId ? { userId: query.userId } : {}),
+        user: { organizationId: actor.organizationId },
+        ...(scopedUserId ? { userId: scopedUserId } : {}),
         ...(query.approverId ? { appliedToId: query.approverId } : {}),
         ...(query.status ? { status: query.status } : {}),
       },
@@ -89,18 +123,39 @@ export class LeavesService {
     });
   }
 
-  pending(approverId?: string) {
+  async pending(
+    approverId: string | undefined,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    const scopedApproverId =
+      approverId ?? (this.elevatedRoles.has(actor.role as Role) ? undefined : actor.sub);
+
+    if (scopedApproverId) {
+      await this.assertUserAccess(scopedApproverId, actor);
+    }
+
     return this.prisma.leave.findMany({
       where: {
+        user: { organizationId: actor.organizationId },
         status: LeaveStatus.PENDING,
-        ...(approverId ? { appliedToId: approverId } : {}),
+        ...(scopedApproverId ? { appliedToId: scopedApproverId } : {}),
       },
       orderBy: { createdAt: 'asc' },
     });
   }
 
-  async findOne(id: string) {
-    const leave = await this.prisma.leave.findUnique({ where: { id } });
+  async findOne(
+    id: string,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    const leave = await this.prisma.leave.findFirst({
+      where: {
+        id,
+        user: {
+          organizationId: actor.organizationId,
+        },
+      },
+    });
 
     if (!leave) {
       throw new NotFoundException('Leave request not found');
@@ -109,8 +164,16 @@ export class LeavesService {
     return leave;
   }
 
-  async update(id: string, dto: UpdateLeaveDto) {
-    await this.findOne(id);
+  async update(
+    id: string,
+    dto: UpdateLeaveDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    const leave = await this.findOne(id, actor);
+
+    if (leave.userId !== actor.sub && !this.elevatedRoles.has(actor.role as Role)) {
+      throw new ForbiddenException('You can only update your own leave request');
+    }
 
     return this.prisma.leave.update({
       where: { id },
@@ -118,15 +181,30 @@ export class LeavesService {
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(
+    id: string,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    const leave = await this.findOne(id, actor);
+
+    if (leave.userId !== actor.sub && !this.elevatedRoles.has(actor.role as Role)) {
+      throw new ForbiddenException('You can only delete your own leave request');
+    }
 
     await this.prisma.leave.delete({ where: { id } });
     return { deleted: true, id };
   }
 
-  async approve(id: string, dto: LeaveApprovalDto) {
-    const leave = await this.findOne(id);
+  async approve(
+    id: string,
+    dto: LeaveApprovalDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    const leave = await this.findOne(id, actor);
+
+    if (leave.appliedToId !== actor.sub && !this.elevatedRoles.has(actor.role as Role)) {
+      throw new ForbiddenException('You are not allowed to approve this leave request');
+    }
 
     if (leave.status !== LeaveStatus.PENDING) {
       throw new BadRequestException('Only pending leave can be approved');
@@ -157,8 +235,16 @@ export class LeavesService {
     return updated;
   }
 
-  async reject(id: string, dto: LeaveRejectionDto) {
-    const leave = await this.findOne(id);
+  async reject(
+    id: string,
+    dto: LeaveRejectionDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    const leave = await this.findOne(id, actor);
+
+    if (leave.appliedToId !== actor.sub && !this.elevatedRoles.has(actor.role as Role)) {
+      throw new ForbiddenException('You are not allowed to reject this leave request');
+    }
 
     if (leave.status !== LeaveStatus.PENDING) {
       throw new BadRequestException('Only pending leave can be rejected');
@@ -189,8 +275,12 @@ export class LeavesService {
     return updated;
   }
 
-  async cancel(id: string, dto: LeaveCancelDto) {
-    const leave = await this.findOne(id);
+  async cancel(
+    id: string,
+    dto: LeaveCancelDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    const leave = await this.findOne(id, actor);
 
     if (leave.status === LeaveStatus.CANCELLED) {
       throw new BadRequestException('Leave is already cancelled');
@@ -200,7 +290,7 @@ export class LeavesService {
       throw new BadRequestException('Rejected leave cannot be cancelled');
     }
 
-    if (leave.userId !== dto.actorUserId) {
+    if (leave.userId !== actor.sub) {
       throw new BadRequestException('Only leave owner can cancel this leave');
     }
 
@@ -252,5 +342,34 @@ export class LeavesService {
     }
 
     return count;
+  }
+
+  private async assertUserInOrganization(userId: string, organizationId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId,
+      },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found in your organization');
+    }
+  }
+
+  private async assertUserAccess(
+    targetUserId: string,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    await this.assertUserInOrganization(targetUserId, actor.organizationId);
+
+    if (targetUserId !== actor.sub && !this.elevatedRoles.has(actor.role as Role)) {
+      throw new ForbiddenException('You can only access your own leave data');
+    }
+  }
+
+  private defaultUserScope(actor: { sub: string; role: string }) {
+    return this.elevatedRoles.has(actor.role as Role) ? undefined : actor.sub;
   }
 }
