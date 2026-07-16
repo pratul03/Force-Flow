@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuthStore } from '@/lib/stores/authStore';
+import { useAuthStore } from '@/features/auth/store';
 import { LoginResponse } from '@/lib/types';
-import { authApi, mapBackendUserToAuthUser, usersApi } from '../lib/api';
+import { authApi } from '@/features/auth/api';
+import { mapBackendUserToAuthUser } from '@/features/auth/utils';
+import { usersApi } from '@/features/users/api';
 
 export function useAuth() {
   const {
