@@ -1,8 +1,9 @@
 import { IsNotEmpty, IsString } from 'class-validator';
+import { IsOptional } from 'class-validator';
 
 export class LeaveRejectionDto {
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   actorUserId!: string;
 
   @IsString()
