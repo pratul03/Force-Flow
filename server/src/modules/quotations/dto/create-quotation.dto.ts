@@ -17,12 +17,14 @@ import { QuotationLineItemDto } from './quotation-line-item.dto';
 
 export class CreateQuotationDto {
   @IsString()
+  @IsOptional()
   organizationId!: string;
 
   @IsString()
   leadId!: string;
 
   @IsString()
+  @IsOptional()
   actorUserId!: string;
 
   @IsString()
