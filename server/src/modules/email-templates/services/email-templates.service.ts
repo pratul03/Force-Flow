@@ -9,10 +9,10 @@ import { UpdateEmailTemplateDto } from '../dto/update-email-template.dto';
 export class EmailTemplatesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateEmailTemplateDto) {
+  async create(dto: CreateEmailTemplateDto, organizationId: string) {
     return await this.prisma.emailTemplate.create({
       data: {
-        organizationId: dto.organizationId,
+        organizationId,
         key: dto.key,
         name: dto.name,
         subject: dto.subject,
@@ -23,10 +23,10 @@ export class EmailTemplatesService {
     });
   }
 
-  async findAll(query: EmailTemplateQueryDto) {
+  async findAll(query: EmailTemplateQueryDto, organizationId: string) {
     return await this.prisma.emailTemplate.findMany({
       where: {
-        ...(query.organizationId ? { organizationId: query.organizationId } : {}),
+        organizationId,
         ...(query.key ? { key: query.key } : {}),
         ...(query.isActive !== undefined ? { isActive: query.isActive } : {}),
       },
@@ -34,14 +34,19 @@ export class EmailTemplatesService {
     });
   }
 
-  async findOne(id: string) {
-    const entity = await this.prisma.emailTemplate.findUnique({ where: { id } });
+  async findOne(id: string, organizationId: string) {
+    const entity = await this.prisma.emailTemplate.findFirst({
+      where: {
+        id,
+        organizationId,
+      },
+    });
     if (!entity) throw new NotFoundException('Email template not found');
     return entity;
   }
 
-  async update(id: string, dto: UpdateEmailTemplateDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateEmailTemplateDto, organizationId: string) {
+    await this.findOne(id, organizationId);
 
     const data: Prisma.EmailTemplateUpdateInput = {
       ...(dto.name !== undefined ? { name: dto.name } : {}),
@@ -59,8 +64,8 @@ export class EmailTemplatesService {
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
     await this.prisma.emailTemplate.delete({ where: { id } });
     return { deleted: true, id };
   }
