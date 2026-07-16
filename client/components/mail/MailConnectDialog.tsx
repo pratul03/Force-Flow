@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { useMailStore } from "@/lib/stores/mailStore";
+import { useMailStore } from "@/features/mailbox/store";
 import { Mail, Mailbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 
