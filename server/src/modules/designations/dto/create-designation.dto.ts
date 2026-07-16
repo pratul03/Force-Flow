@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsNumber } from 'class-validator';
 
 export class CreateDesignationDto {
   @ApiProperty({
@@ -7,7 +7,7 @@ export class CreateDesignationDto {
     description: 'Organization id that owns this designation',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   organizationId!: string;
 
   @ApiProperty({
@@ -25,4 +25,19 @@ export class CreateDesignationDto {
   @IsString()
   @IsNotEmpty()
   code!: string;
+
+  @ApiProperty({ required: false, example: 60000 })
+  @IsNumber()
+  @IsOptional()
+  minSalary?: number;
+
+  @ApiProperty({ required: false, example: 90000 })
+  @IsNumber()
+  @IsOptional()
+  maxSalary?: number;
+
+  @ApiProperty({ required: false, example: 'USD' })
+  @IsString()
+  @IsOptional()
+  currency?: string;
 }
