@@ -67,6 +67,20 @@ const imageMimeTypeRegex = /(jpg|jpeg|png|webp|gif|svg)$/i;
 export class UploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
 
+  private async assertCanManageUser(actor: RequestUser, targetUserId: string) {
+    if (actor.sub === targetUserId || actor.role === Role.SUPER_ADMIN) {
+      return;
+    }
+
+    const targetOrganizationId = await this.uploadsService.getUserOrganizationId(
+      targetUserId,
+    );
+
+    if (!targetOrganizationId || targetOrganizationId !== actor.organizationId) {
+      throw new ForbiddenException('Cannot manage profile photo for another organization user');
+    }
+  }
+
   @Post('users/:userId/profile-photo/signature')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
@@ -106,6 +120,8 @@ export class UploadsController {
         'Cannot generate signature for another user profile photo',
       );
     }
+
+    await this.assertCanManageUser(actor, userId);
 
     return this.uploadsService.getUserProfilePhotoSignature(userId);
   }
@@ -150,6 +166,8 @@ export class UploadsController {
       throw new ForbiddenException('Cannot confirm profile photo for another user');
     }
 
+    await this.assertCanManageUser(actor, userId);
+
     return this.uploadsService.confirmUserProfilePhoto(userId, dto);
   }
 
@@ -188,6 +206,8 @@ export class UploadsController {
     if (actor.sub !== userId && !isPrivileged) {
       throw new ForbiddenException('Cannot delete profile photo for another user');
     }
+
+    await this.assertCanManageUser(actor, userId);
 
     return this.uploadsService.deleteUserProfilePhoto(userId);
   }
@@ -240,7 +260,7 @@ export class UploadsController {
   @ApiUnprocessableEntityResponse({
     description: 'Invalid file type or file size exceeds 5MB',
   })
-  uploadProfilePhoto(
+  async uploadProfilePhoto(
     @Param('userId') userId: string,
     @UploadedFile(
       new ParseFilePipeBuilder()
@@ -269,6 +289,8 @@ export class UploadsController {
     if (actor.sub !== userId && !isPrivileged) {
       throw new ForbiddenException('Cannot upload profile photo for another user');
     }
+
+    await this.assertCanManageUser(actor, userId);
 
     return this.uploadsService.uploadUserProfilePhoto(userId, file);
   }
