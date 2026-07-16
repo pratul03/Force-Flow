@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Req, UseGuards } from '@nestjs/common';
 import {
   ApiBody,
   ApiCreatedResponse,
@@ -8,6 +9,10 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
+import { JwtAuthGuard } from '../../../common/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../../common/auth/guards/roles.guard';
+import { Roles } from '../../../common/auth/roles.decorator';
 import { DepartmentsService } from '../services/departments.service';
 import { CreateDepartmentDto } from '../dto/create-department.dto';
 import {
@@ -33,10 +38,17 @@ const departmentResponseExample = {
 
 @ApiTags('Departments')
 @Controller('departments')
+@UseGuards(JwtAuthGuard)
 export class DepartmentsController {
   constructor(private readonly departmentsService: DepartmentsService) {}
 
+  private getOrgId(req: { user: { organizationId: string } }) {
+    return req.user.organizationId;
+  }
+
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER)
   @ApiOperation({ summary: 'Create a department' })
   @ApiBody({
     type: CreateDepartmentDto,
@@ -52,8 +64,11 @@ export class DepartmentsController {
     type: DepartmentResponseDto,
     schema: { example: departmentResponseExample },
   })
-  create(@Body() dto: CreateDepartmentDto): Promise<DepartmentResponseDto> {
-    return this.departmentsService.create(dto);
+  create(
+    @Body() dto: CreateDepartmentDto,
+    @Req() req: { user: { organizationId: string } },
+  ): Promise<DepartmentResponseDto> {
+    return this.departmentsService.create(dto, this.getOrgId(req));
   }
 
   @Get()
@@ -71,9 +86,9 @@ export class DepartmentsController {
     schema: { example: [departmentResponseExample] },
   })
   findAll(
-    @Query('organizationId') organizationId?: string,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<DepartmentResponseDto[]> {
-    return this.departmentsService.findAll(organizationId);
+    return this.departmentsService.findAll(this.getOrgId(req));
   }
 
   @Get(':id')
@@ -88,8 +103,11 @@ export class DepartmentsController {
     type: DepartmentResponseDto,
     schema: { example: departmentResponseExample },
   })
-  findOne(@Param('id') id: string): Promise<DepartmentResponseDto> {
-    return this.departmentsService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Req() req: { user: { organizationId: string } },
+  ): Promise<DepartmentResponseDto> {
+    return this.departmentsService.findOne(id, this.getOrgId(req));
   }
 
   @Patch(':id')
@@ -125,8 +143,9 @@ export class DepartmentsController {
   update(
     @Param('id') id: string,
     @Body() dto: UpdateDepartmentDto,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<DepartmentResponseDto> {
-    return this.departmentsService.update(id, dto);
+    return this.departmentsService.update(id, dto, this.getOrgId(req));
   }
 
   @Delete(':id')
@@ -146,7 +165,10 @@ export class DepartmentsController {
       },
     },
   })
-  remove(@Param('id') id: string): Promise<DeleteDepartmentResponseDto> {
-    return this.departmentsService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @Req() req: { user: { organizationId: string } },
+  ): Promise<DeleteDepartmentResponseDto> {
+    return this.departmentsService.remove(id, this.getOrgId(req));
   }
 }
