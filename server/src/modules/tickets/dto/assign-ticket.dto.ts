@@ -3,6 +3,7 @@ import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class AssignTicketDto {
   @IsString()
+  @IsOptional()
   actorUserId!: string;
 
   @IsString()
