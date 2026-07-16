@@ -1,0 +1,265 @@
+{
+  "main": {
+    "id": "b36cad9f4d44a834",
+    "type": "split",
+    "children": [
+      {
+        "id": "e4fc9c88b360d2de",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a254607648161a14",
+            "type": "leaf",
+            "pinned": true,
+            "state": {
+              "type": "terminal:terminal",
+              "state": {
+                "terminal:terminal": {
+                  "cwd": "/Users/pratulmakar/Developer/hmr",
+                  "focus": false,
+                  "profile": {
+                    "args": [
+                      "--login"
+                    ],
+                    "environment": [],
+                    "executable": "/bin/zsh",
+                    "followTheme": true,
+                    "name": "",
+                    "platforms": {
+                      "darwin": true
+                    },
+                    "pythonExecutable": "python3",
+                    "restoreHistory": false,
+                    "rightClickAction": "copyPaste",
+                    "successExitCodes": [
+                      "0",
+                      "SIGINT",
+                      "SIGTERM"
+                    ],
+                    "terminalOptions": {
+                      "documentOverride": null
+                    },
+                    "type": "integrated",
+                    "useWin32Conhost": true
+                  },
+                  "profileSourceId": "darwinIntegratedDefault",
+                  "serial": null,
+                  "userTitle": ""
+                }
+              },
+              "pinned": true,
+              "icon": "terminal",
+              "title": "Terminal: zsh"
+            }
+          },
+          {
+            "id": "d5e32431b45ae170",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "bd4c9059a7e98f80",
+    "type": "split",
+    "children": [
+      {
+        "id": "aa2ff13cc898f4a1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "512768589946db94",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "93fbec12463e01c4",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "e7c244d9689d9bfa",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "df89183db6fa8f46",
+    "type": "split",
+    "children": [
+      {
+        "id": "5a1e01dda850ce9c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "741baab3679306f0",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "a754ca646be1a10a",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "f7dded0c419ab372",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "4f5daa2498164de2",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "29d95bc6519ff26f",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false,
+      "terminal:Open terminal": false
+    }
+  },
+  "active": "d5e32431b45ae170",
+  "lastOpenFiles": [
+    "green-push.sh",
+    "client/app/(app)/settings/shifts/page.tsx",
+    "client/components/settings/ShiftDialog.tsx",
+    "client/features/shifts/queries.ts",
+    "client/features/shifts/types.ts",
+    "client/app/(app)/settings/holidays/page.tsx",
+    "client/components/settings/HolidayDialog.tsx",
+    "client/features/holidays/queries.ts",
+    "client/features/holidays/types.ts",
+    "client/app/(app)/settings/locations/page.tsx",
+    "client/components/settings/LocationDialog.tsx",
+    "Force-Flow-Brain/recreate.md",
+    "Force-Flow-Brain/10 Development/Task Progress.md",
+    "Force-Flow-Brain/11 AI Memory/Session Memory.md",
+    "Force-Flow-Brain/11 AI Memory/Repository Summary.md",
+    "Force-Flow-Brain/11 AI Memory/Prompt Context.md",
+    "Force-Flow-Brain/11 AI Memory/Feature Progress.md",
+    "Force-Flow-Brain/11 AI Memory/Agent Instructions.md",
+    "Force-Flow-Brain/11 AI Memory/AI Rules.md",
+    "Force-Flow-Brain/10 Development/Technical Debt.md",
+    "Force-Flow-Brain/10 Development/Performance.md",
+    "Force-Flow-Brain/10 Development/Known Bugs.md",
+    "Force-Flow-Brain/10 Development/Future Ideas.md",
+    "Force-Flow-Brain/10 Development/Current Tasks.md",
+    "Force-Flow-Brain/09 Coding Standards/TypeScript.md",
+    "Force-Flow-Brain/09 Coding Standards/React.md",
+    "Force-Flow-Brain/09 Coding Standards/Prisma.md",
+    "Force-Flow-Brain/09 Coding Standards/NextJS.md",
+    "Force-Flow-Brain/09 Coding Standards/NestJS.md",
+    "Force-Flow-Brain/09 Coding Standards/Git.md",
+    "Force-Flow-Brain/08 Design Decisions/ADR-004 Multi Tenant.md",
+    "Force-Flow-Brain/08 Design Decisions/ADR-003 Prisma.md",
+    "Force-Flow-Brain/08 Design Decisions/ADR-002 Folder Structure.md",
+    "Force-Flow-Brain/08 Design Decisions/ADR-001 Authentication.md",
+    "Force-Flow-Brain/07 API/Payroll APIs.md",
+    "Force-Flow-Brain/07 API/Leave APIs.md"
+  ]
+}
