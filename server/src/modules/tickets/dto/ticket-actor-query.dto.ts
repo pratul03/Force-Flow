@@ -3,6 +3,7 @@ import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class TicketActorQueryDto {
   @IsString()
+  @IsOptional()
   actorUserId!: string;
 
   @Type(() => Number)
