@@ -20,15 +20,20 @@ export class OrganizationsService {
     });
   }
 
-  findAll() {
+  findAll(organizationId: string) {
     return this.prisma.organization.findMany({
+      where: { id: organizationId },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorOrganizationId: string) {
+    if (id !== actorOrganizationId) {
+      throw new NotFoundException('Organization not found');
+    }
+
     const organization = await this.prisma.organization.findUnique({
-      where: { id },
+      where: { id: actorOrganizationId },
     });
 
     if (!organization) {
@@ -38,20 +43,20 @@ export class OrganizationsService {
     return organization;
   }
 
-  async update(id: string, dto: UpdateOrganizationDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateOrganizationDto, actorOrganizationId: string) {
+    await this.findOne(id, actorOrganizationId);
 
     return this.prisma.organization.update({
-      where: { id },
+      where: { id: actorOrganizationId },
       data: dto,
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, actorOrganizationId: string) {
+    await this.findOne(id, actorOrganizationId);
 
     return this.prisma.organization.delete({
-      where: { id },
+      where: { id: actorOrganizationId },
     });
   }
 }
