@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -67,6 +68,7 @@ const emailTemplateResponseExample = {
 
 @ApiTags('Email Templates')
 @Controller('email-templates')
+@UseGuards(JwtAuthGuard)
 export class EmailTemplatesController {
   constructor(private readonly emailTemplatesService: EmailTemplatesService) {}
 
@@ -93,8 +95,12 @@ export class EmailTemplatesController {
   @ApiForbiddenResponse({ description: 'Insufficient role permission' })
   async create(
     @Body() dto: CreateEmailTemplateDto,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<EmailTemplateResponseDto> {
-    return (await this.emailTemplatesService.create(dto)) as EmailTemplateResponseDto;
+    return (await this.emailTemplatesService.create(
+      dto,
+      req.user.organizationId,
+    )) as EmailTemplateResponseDto;
   }
 
   @Get()
@@ -122,8 +128,12 @@ export class EmailTemplatesController {
   })
   async findAll(
     @Query() query: EmailTemplateQueryDto,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<EmailTemplateResponseDto[]> {
-    return (await this.emailTemplatesService.findAll(query)) as EmailTemplateResponseDto[];
+    return (await this.emailTemplatesService.findAll(
+      query,
+      req.user.organizationId,
+    )) as EmailTemplateResponseDto[];
   }
 
   @Get(':id')
@@ -137,8 +147,14 @@ export class EmailTemplatesController {
     type: EmailTemplateResponseDto,
     schema: { example: emailTemplateResponseExample },
   })
-  async findOne(@Param('id') id: string): Promise<EmailTemplateResponseDto> {
-    return (await this.emailTemplatesService.findOne(id)) as EmailTemplateResponseDto;
+  async findOne(
+    @Param('id') id: string,
+    @Req() req: { user: { organizationId: string } },
+  ): Promise<EmailTemplateResponseDto> {
+    return (await this.emailTemplatesService.findOne(
+      id,
+      req.user.organizationId,
+    )) as EmailTemplateResponseDto;
   }
 
   @Patch(':id')
@@ -182,8 +198,13 @@ export class EmailTemplatesController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateEmailTemplateDto,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<EmailTemplateResponseDto> {
-    return (await this.emailTemplatesService.update(id, dto)) as EmailTemplateResponseDto;
+    return (await this.emailTemplatesService.update(
+      id,
+      dto,
+      req.user.organizationId,
+    )) as EmailTemplateResponseDto;
   }
 
   @Delete(':id')
@@ -207,7 +228,10 @@ export class EmailTemplatesController {
   })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   @ApiForbiddenResponse({ description: 'Insufficient role permission' })
-  remove(@Param('id') id: string): Promise<DeleteEmailTemplateResponseDto> {
-    return this.emailTemplatesService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @Req() req: { user: { organizationId: string } },
+  ): Promise<DeleteEmailTemplateResponseDto> {
+    return this.emailTemplatesService.remove(id, req.user.organizationId);
   }
 }
