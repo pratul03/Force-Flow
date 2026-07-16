@@ -4,7 +4,7 @@ import { IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
 export class CreateEmailTemplateDto {
   @ApiProperty({ example: 'cm9z9u0g30000r4v0h8x8a7na' })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   organizationId!: string;
 
   @ApiProperty({ example: 'LEAVE_APPROVED' })
