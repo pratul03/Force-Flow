@@ -11,9 +11,11 @@ import {
 
 export class CreateLeadDto {
   @IsString()
+  @IsOptional()
   organizationId!: string;
 
   @IsString()
+  @IsOptional()
   actorUserId!: string;
 
   @IsString()
