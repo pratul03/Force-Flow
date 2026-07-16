@@ -12,7 +12,7 @@ import {
 
 export class CreateAssetDto {
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   organizationId!: string;
 
   @IsString()
