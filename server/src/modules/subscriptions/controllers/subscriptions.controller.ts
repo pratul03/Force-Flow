@@ -65,7 +65,11 @@ export class SubscriptionsController {
   }
 
   @Post('webhook')
-  webhook(@Body() dto: SubscriptionWebhookDto) {
+  webhook(
+    @Headers('x-subscription-webhook-secret') webhookSecret: string | undefined,
+    @Body() dto: SubscriptionWebhookDto,
+  ) {
+    this.subscriptionsService.assertWebhookSecret(webhookSecret);
     return this.subscriptionsService.processWebhook(dto);
   }
 
