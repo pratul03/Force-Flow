@@ -18,19 +18,24 @@ export class DesignationsService {
     });
   }
 
-  async findOne(id: string) {
-    const entity = await this.prisma.designation.findUnique({ where: { id } });
+  async findOne(id: string, organizationId: string) {
+    const entity = await this.prisma.designation.findFirst({
+      where: {
+        id,
+        organizationId,
+      },
+    });
     if (!entity) throw new NotFoundException('Designation not found');
     return entity;
   }
 
-  async update(id: string, dto: UpdateDesignationDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateDesignationDto, organizationId: string) {
+    await this.findOne(id, organizationId);
     return this.prisma.designation.update({ where: { id }, data: dto });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
     await this.prisma.designation.delete({ where: { id } });
     return { deleted: true, id };
   }
