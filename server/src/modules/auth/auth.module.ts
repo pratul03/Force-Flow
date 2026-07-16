@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { AuthService } from './services/auth.service';
         secret: configService.get<string>('JWT_ACCESS_SECRET') ?? 'dev-access-secret',
       }),
     }),
+    UsersModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],
