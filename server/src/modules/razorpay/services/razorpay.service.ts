@@ -39,11 +39,14 @@ export class RazorpayService {
     return this.razorpayClient;
   }
 
-  createPayout(payload: Record<string, unknown>) {
+  createPayout(payload: Record<string, unknown>, organizationId: string) {
     return {
       provider: BillingProvider.RAZORPAY,
       status: 'queued',
-      payload,
+      payload: {
+        ...payload,
+        organizationId,
+      },
       createdAt: new Date().toISOString(),
     };
   }
