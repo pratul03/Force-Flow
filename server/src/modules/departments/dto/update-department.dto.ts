@@ -11,4 +11,14 @@ export class UpdateDepartmentDto {
   @IsString()
   @IsOptional()
   code?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  parentId?: string | null;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  managerId?: string | null;
 }
