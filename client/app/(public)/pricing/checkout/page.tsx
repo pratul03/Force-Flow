@@ -10,8 +10,8 @@ import {
   InlineTextLoadingSkeleton,
   PageLoadingSkeleton,
 } from "@/components/ui/loading-skeletons";
-import { subscriptionsApi } from "@/lib/api";
-import { BackendOrganizationSubscription } from "@/lib/types";
+import { subscriptionsApi } from "@/features/subscriptions/api";
+import { BackendOrganizationSubscription } from "@/features/subscriptions/types";
 
 type CheckoutState = "loading" | "success" | "error";
 
