@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
@@ -17,31 +18,50 @@ import { CompensationSettlementQueryDto } from '../dto/compensation-settlement-q
 import { RecalculateCompensationDto } from '../dto/recalculate-compensation.dto';
 
 @Controller('compensation')
+@UseGuards(JwtAuthGuard)
 export class CompensationController {
   constructor(private readonly compensationService: CompensationService) {}
 
   @Get('status')
-  status() {
-    return this.compensationService.getStatus();
+  status(@Req() req: { user: { organizationId: string } }) {
+    return this.compensationService.getStatus(req.user.organizationId);
   }
 
   @Get('preview/:userId')
   preview(
     @Param('userId') userId: string,
     @Query() query: CompensationPreviewDto,
+    @Req() req: { user: { sub: string; organizationId: string; role: Role } },
   ) {
-    return this.compensationService.previewUserCompensation(userId, query);
+    return this.compensationService.previewUserCompensation(userId, query, {
+      actorUserId: req.user.sub,
+      organizationId: req.user.organizationId,
+      role: req.user.role,
+    });
   }
 
   @Get('settlements')
-  listSettlements(@Query() query: CompensationSettlementQueryDto) {
-    return this.compensationService.listSettlements(query);
+  listSettlements(
+    @Query() query: CompensationSettlementQueryDto,
+    @Req() req: { user: { sub: string; organizationId: string; role: Role } },
+  ) {
+    return this.compensationService.listSettlements(query, {
+      actorUserId: req.user.sub,
+      organizationId: req.user.organizationId,
+      role: req.user.role,
+    });
   }
 
   @Post('recalculate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER)
-  recalculate(@Body() dto: RecalculateCompensationDto) {
-    return this.compensationService.recalculate(dto);
+  recalculate(
+    @Body() dto: RecalculateCompensationDto,
+    @Req() req: { user: { organizationId: string } },
+  ) {
+    return this.compensationService.recalculate({
+      ...dto,
+      organizationId: req.user.organizationId,
+    });
   }
 }
