@@ -2,7 +2,7 @@ import { IsBoolean, IsDateString, IsNotEmpty, IsOptional, IsString } from 'class
 
 export class CreateHolidayDto {
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   organizationId!: string;
 
   @IsString()
