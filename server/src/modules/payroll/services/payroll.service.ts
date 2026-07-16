@@ -35,10 +35,19 @@ export class PayrollService implements OnModuleInit {
     });
   }
 
-  async previewUserPayroll(userId: string, month: number, year: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+  async previewUserPayroll(
+    userId: string,
+    month: number,
+    year: number,
+    organizationId: string,
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId,
+      },
       select: {
+        organizationId: true,
         organization: {
           select: {
             baseHourlyRate: true,
@@ -92,17 +101,20 @@ export class PayrollService implements OnModuleInit {
     };
   }
 
-  generatePayrollCycle(input: GeneratePayrollDto) {
+  generatePayrollCycle(input: GeneratePayrollDto, organizationId: string) {
     return this.queueService.enqueue({
       type: 'payroll.generate-cycle',
-      payload: { ...input },
+      payload: { ...input, organizationId },
       maxAttempts: 5,
     });
   }
 
-  listInvoices(query: PayrollQueryDto) {
+  listInvoices(query: PayrollQueryDto, organizationId: string) {
     return this.prisma.invoice.findMany({
       where: {
+        user: {
+          organizationId,
+        },
         ...(query.userId ? { userId: query.userId } : {}),
         ...(query.month ? { month: query.month } : {}),
         ...(query.year ? { year: query.year } : {}),
@@ -123,9 +135,14 @@ export class PayrollService implements OnModuleInit {
     });
   }
 
-  async getInvoice(id: string) {
-    const invoice = await this.prisma.invoice.findUnique({
-      where: { id },
+  async getInvoice(id: string, organizationId: string) {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: {
+        id,
+        user: {
+          organizationId,
+        },
+      },
       include: {
         user: {
           select: {
@@ -147,9 +164,14 @@ export class PayrollService implements OnModuleInit {
     return invoice;
   }
 
-  async getInvoiceRenderedDocument(id: string) {
-    const invoice = await this.prisma.invoice.findUnique({
-      where: { id },
+  async getInvoiceRenderedDocument(id: string, organizationId: string) {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: {
+        id,
+        user: {
+          organizationId,
+        },
+      },
       include: {
         user: {
           select: {
@@ -204,8 +226,8 @@ export class PayrollService implements OnModuleInit {
     };
   }
 
-  async downloadInvoicePdf(id: string) {
-    const rendered = await this.getInvoiceRenderedDocument(id);
+  async downloadInvoicePdf(id: string, organizationId: string) {
+    const rendered = await this.getInvoiceRenderedDocument(id, organizationId);
     const buffer = await this.renderInvoicePdfWithPuppeteer(rendered.renderedHtml);
 
     return {
@@ -214,15 +236,15 @@ export class PayrollService implements OnModuleInit {
     };
   }
 
-  async markInvoicePaid(id: string, dto: MarkInvoicePaidDto) {
-    const invoice = await this.getInvoice(id);
+  async markInvoicePaid(id: string, dto: MarkInvoicePaidDto, organizationId: string) {
+    const invoice = await this.getInvoice(id, organizationId);
 
     if (invoice.status === InvoiceStatus.PAID) {
       throw new BadRequestException('Invoice is already marked as paid');
     }
 
     return this.prisma.invoice.update({
-      where: { id },
+      where: { id: invoice.id },
       data: {
         status: InvoiceStatus.PAID,
         paidAt: new Date(),
