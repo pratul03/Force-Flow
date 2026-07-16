@@ -1,7 +1,11 @@
 import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
+import { UsersService } from '../../users/services/users.service';
 import { LoginDto } from '../dto/login.dto';
+import { RegisterDto } from '../dto/register.dto';
+import { ForgotPasswordDto } from '../../users/dto/forgot-password.dto';
+import { ResetPasswordDto } from '../../users/dto/reset-password.dto';
 
 type TokenPairResponse = {
   accessToken: string;
@@ -12,7 +16,10 @@ type TokenPairResponse = {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   private parseDurationToMs(duration: string | undefined, fallbackMs: number): number {
     if (!duration) {
@@ -103,6 +110,16 @@ export class AuthController {
     return result;
   }
 
+  @Post('register')
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.register(dto);
+    this.setAuthCookies(response, result);
+    return result;
+  }
+
   @Post('refresh')
   async refresh(
     @Body() body: { refreshToken?: string } | undefined,
@@ -125,5 +142,15 @@ export class AuthController {
     const result = await this.authService.logout({ refreshToken: refreshToken ?? '' });
     this.clearAuthCookies(response);
     return result;
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.usersService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.usersService.resetPassword(dto);
   }
 }
