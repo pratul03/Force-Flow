@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
-import { BoneyardProvider } from "@/components/providers/BoneyardProvider";
+
 import { MotionProvider } from "@/components/providers/MotionProvider";
+import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import "./globals.css";
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -51,9 +52,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="bg-background text-foreground font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <BoneyardProvider>
+          <ReactQueryProvider>
             <MotionProvider>{children}</MotionProvider>
-          </BoneyardProvider>
+          </ReactQueryProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
