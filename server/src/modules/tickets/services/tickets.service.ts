@@ -75,9 +75,12 @@ export class TicketsService {
     });
   }
 
-  async findOne(id: string) {
-    const ticket = await this.prisma.ticket.findUnique({
-      where: { id },
+  async findOne(id: string, organizationId?: string) {
+    const ticket = await this.prisma.ticket.findFirst({
+      where: {
+        id,
+        ...(organizationId ? { organizationId } : {}),
+      },
       include: {
         requester: {
           select: {
