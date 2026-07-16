@@ -39,6 +39,18 @@ export class SubscriptionsService {
     private readonly razorpayService: RazorpayService,
   ) {}
 
+  assertWebhookSecret(receivedSecret?: string) {
+    const configuredSecret = process.env.SUBSCRIPTION_WEBHOOK_SECRET?.trim();
+
+    if (!configuredSecret) {
+      return;
+    }
+
+    if (!receivedSecret || receivedSecret !== configuredSecret) {
+      throw new ForbiddenException('Invalid subscription webhook secret');
+    }
+  }
+
   listPlans() {
     return this.prisma.subscriptionPlan.findMany({
       where: { isActive: true },
