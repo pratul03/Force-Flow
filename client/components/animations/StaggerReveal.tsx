@@ -1,12 +1,5 @@
 "use client";
 
-import * as motion from "motion/react-client";
-
-import {
-  createRevealUpVariants,
-  createStaggerContainerVariants,
-} from "@/lib/motion-presets";
-
 export function StaggerContainer({
   children,
   className,
@@ -19,14 +12,9 @@ export function StaggerContainer({
   staggerChildren?: number;
 }) {
   return (
-    <motion.div
-      variants={createStaggerContainerVariants(delayChildren, staggerChildren)}
-      initial="hidden"
-      animate="show"
-      className={className}
-    >
+    <div className={className}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -40,11 +28,8 @@ export function StaggerItem({
   distance?: number;
 }) {
   return (
-    <motion.div
-      variants={createRevealUpVariants(distance)}
-      className={className}
-    >
+    <div className={className}>
       {children}
-    </motion.div>
+    </div>
   );
 }
