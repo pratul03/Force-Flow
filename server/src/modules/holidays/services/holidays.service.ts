@@ -23,12 +23,12 @@ export class HolidaysService implements OnModuleInit {
     });
   }
 
-  async getStatus() {
-    const [organizations, holidays, upcomingCount] = await Promise.all([
-      this.prisma.organization.count(),
-      this.prisma.holiday.count(),
+  async getStatus(organizationId: string) {
+    const [holidays, upcomingCount] = await Promise.all([
+      this.prisma.holiday.count({ where: { organizationId } }),
       this.prisma.holiday.count({
         where: {
+          organizationId,
           date: {
             gte: new Date(),
           },
@@ -39,7 +39,7 @@ export class HolidaysService implements OnModuleInit {
     return {
       module: 'holidays',
       status: 'active',
-      organizations,
+      organizationId,
       holidays,
       upcomingCount,
       generatedAt: new Date().toISOString(),
@@ -97,8 +97,13 @@ export class HolidaysService implements OnModuleInit {
     });
   }
 
-  async remove(id: string) {
-    const existing = await this.prisma.holiday.findUnique({ where: { id } });
+  async remove(id: string, organizationId: string) {
+    const existing = await this.prisma.holiday.findFirst({
+      where: {
+        id,
+        organizationId,
+      },
+    });
 
     if (!existing) {
       throw new NotFoundException('Holiday not found');
