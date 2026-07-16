@@ -75,6 +75,15 @@ export class UploadsService {
     });
   }
 
+  async getUserOrganizationId(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { organizationId: true },
+    });
+
+    return user?.organizationId ?? null;
+  }
+
   async getOrganizationLogoSignature(organizationId: string) {
     const organization = await this.prisma.organization.findUnique({
       where: { id: organizationId },
