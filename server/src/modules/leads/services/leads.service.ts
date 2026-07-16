@@ -56,9 +56,12 @@ export class LeadsService {
     });
   }
 
-  async findOne(id: string) {
-    const lead = await this.prisma.lead.findUnique({
-      where: { id },
+  async findOne(id: string, organizationId?: string) {
+    const lead = await this.prisma.lead.findFirst({
+      where: {
+        id,
+        ...(organizationId ? { organizationId } : {}),
+      },
       include: {
         quotations: {
           orderBy: { createdAt: 'desc' },
