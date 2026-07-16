@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
@@ -18,37 +19,47 @@ import { HolidayQueryDto } from '../dto/holiday-query.dto';
 import { SyncHolidaysDto } from '../dto/sync-holidays.dto';
 
 @Controller('holidays')
+@UseGuards(JwtAuthGuard)
 export class HolidaysController {
   constructor(private readonly holidaysService: HolidaysService) {}
 
   @Get('status')
-  status() {
-    return this.holidaysService.getStatus();
+  status(@Req() req: { user: { organizationId: string } }) {
+    return this.holidaysService.getStatus(req.user.organizationId);
   }
 
   @Get()
-  list(@Query() query: HolidayQueryDto) {
-    return this.holidaysService.list(query);
+  list(@Query() query: HolidayQueryDto, @Req() req: { user: { organizationId: string } }) {
+    return this.holidaysService.list({
+      ...query,
+      organizationId: req.user.organizationId,
+    });
   }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER)
-  create(@Body() dto: CreateHolidayDto) {
-    return this.holidaysService.create(dto);
+  create(@Body() dto: CreateHolidayDto, @Req() req: { user: { organizationId: string } }) {
+    return this.holidaysService.create({
+      ...dto,
+      organizationId: req.user.organizationId,
+    });
   }
 
   @Post('sync')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER)
-  sync(@Body() dto: SyncHolidaysDto) {
-    return this.holidaysService.syncCalendar(dto);
+  sync(@Body() dto: SyncHolidaysDto, @Req() req: { user: { organizationId: string } }) {
+    return this.holidaysService.syncCalendar({
+      ...dto,
+      organizationId: req.user.organizationId,
+    });
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER)
-  remove(@Param('id') id: string) {
-    return this.holidaysService.remove(id);
+  remove(@Param('id') id: string, @Req() req: { user: { organizationId: string } }) {
+    return this.holidaysService.remove(id, req.user.organizationId);
   }
 }
