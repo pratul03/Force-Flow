@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   OnModuleInit,
@@ -9,6 +10,7 @@ import {
   Prisma,
   QueueJob,
   QueueJobStatus,
+  Role,
   TransactionStatus,
   TransactionType,
 } from '@prisma/client';
@@ -20,6 +22,12 @@ import { RecalculateCompensationDto } from '../dto/recalculate-compensation.dto'
 
 @Injectable()
 export class CompensationService implements OnModuleInit {
+  private readonly adminRoles = new Set<Role>([
+    Role.SUPER_ADMIN,
+    Role.ADMIN,
+    Role.HR_MANAGER,
+  ]);
+
   constructor(
     private readonly queueService: QueueService,
     private readonly prisma: PrismaService,
@@ -31,16 +39,26 @@ export class CompensationService implements OnModuleInit {
     });
   }
 
-  async getStatus() {
+  async getStatus(organizationId: string) {
     const [paidInvoices, settlementTransactions, queuedJobs] = await Promise.all([
-      this.prisma.invoice.count({ where: { status: InvoiceStatus.PAID } }),
+      this.prisma.invoice.count({
+        where: {
+          status: InvoiceStatus.PAID,
+          user: { organizationId },
+        },
+      }),
       this.prisma.walletTransaction.count({
         where: {
           type: TransactionType.CREDIT,
           payoutId: { startsWith: 'invoice:' },
+          wallet: {
+            user: {
+              organizationId,
+            },
+          },
         },
       }),
-      this.prisma.queueJob.count({
+      this.prisma.queueJob.findMany({
         where: {
           type: 'compensation.recalculate',
           status: {
@@ -51,8 +69,20 @@ export class CompensationService implements OnModuleInit {
             ],
           },
         },
+        select: {
+          payload: true,
+        },
       }),
     ]);
+
+    const queuedJobsCount = queuedJobs.filter((job) => {
+      if (!job.payload || typeof job.payload !== 'object' || Array.isArray(job.payload)) {
+        return false;
+      }
+
+      const payloadOrganizationId = (job.payload as Record<string, unknown>).organizationId;
+      return typeof payloadOrganizationId === 'string' && payloadOrganizationId === organizationId;
+    }).length;
 
     return {
       module: 'compensation',
@@ -60,7 +90,7 @@ export class CompensationService implements OnModuleInit {
       paidInvoices,
       settlementTransactions,
       unsettledPaidInvoices: Math.max(0, paidInvoices - settlementTransactions),
-      queuedJobs,
+      queuedJobs: queuedJobsCount,
       generatedAt: new Date().toISOString(),
     };
   }
@@ -76,13 +106,23 @@ export class CompensationService implements OnModuleInit {
     });
   }
 
-  async previewUserCompensation(userId: string, dto: CompensationPreviewDto) {
-    const invoice = await this.prisma.invoice.findUnique({
+  async previewUserCompensation(
+    userId: string,
+    dto: CompensationPreviewDto,
+    actor: { actorUserId: string; organizationId: string; role: Role },
+  ) {
+    const isAdmin = this.adminRoles.has(actor.role);
+    if (!isAdmin && actor.actorUserId !== userId) {
+      throw new ForbiddenException('You can only preview your own compensation data');
+    }
+
+    const invoice = await this.prisma.invoice.findFirst({
       where: {
-        userId_month_year: {
-          userId,
-          month: dto.month,
-          year: dto.year,
+        userId,
+        month: dto.month,
+        year: dto.year,
+        user: {
+          organizationId: actor.organizationId,
         },
       },
     });
@@ -91,8 +131,13 @@ export class CompensationService implements OnModuleInit {
       throw new NotFoundException('Invoice not found for selected cycle');
     }
 
-    const wallet = await this.prisma.wallet.findUnique({
-      where: { userId },
+    const wallet = await this.prisma.wallet.findFirst({
+      where: {
+        userId,
+        user: {
+          organizationId: actor.organizationId,
+        },
+      },
       select: {
         id: true,
         balance: true,
@@ -141,24 +186,23 @@ export class CompensationService implements OnModuleInit {
     };
   }
 
-  listSettlements(query: CompensationSettlementQueryDto) {
+  listSettlements(
+    query: CompensationSettlementQueryDto,
+    actor: { actorUserId: string; organizationId: string; role: Role },
+  ) {
+    const isAdmin = this.adminRoles.has(actor.role);
+    const userIdFilter = isAdmin ? query.userId : actor.actorUserId;
+
     const where: Prisma.WalletTransactionWhereInput = {
       type: TransactionType.CREDIT,
       payoutId: { startsWith: 'invoice:' },
+      wallet: {
+        ...(userIdFilter ? { userId: userIdFilter } : {}),
+        user: {
+          organizationId: actor.organizationId,
+        },
+      },
     };
-
-    if (query.userId || query.organizationId) {
-      where.wallet = {
-        ...(query.userId ? { userId: query.userId } : {}),
-        ...(query.organizationId
-          ? {
-              user: {
-                organizationId: query.organizationId,
-              },
-            }
-          : {}),
-      };
-    }
 
     if (query.month && query.year) {
       const start = new Date(Date.UTC(query.year, query.month - 1, 1));
