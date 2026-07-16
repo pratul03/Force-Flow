@@ -17,6 +17,7 @@ import { QuotationLineItemDto } from './quotation-line-item.dto';
 
 export class UpdateQuotationDto {
   @IsString()
+  @IsOptional()
   actorUserId!: string;
 
   @IsString()
