@@ -9,12 +9,12 @@ import { UpdateInvoiceTemplateDto } from '../dto/update-invoice-template.dto';
 export class InvoiceTemplatesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateInvoiceTemplateDto) {
+  async create(dto: CreateInvoiceTemplateDto, organizationId: string) {
     if (dto.isDefault) {
       return this.prisma.$transaction(async (tx) => {
         await tx.invoiceTemplate.updateMany({
           where: {
-            organizationId: dto.organizationId,
+            organizationId,
             isDefault: true,
           },
           data: { isDefault: false },
@@ -22,7 +22,7 @@ export class InvoiceTemplatesService {
 
         return tx.invoiceTemplate.create({
           data: {
-            organizationId: dto.organizationId,
+            organizationId,
             key: dto.key,
             name: dto.name,
             headerHtml: dto.headerHtml,
@@ -39,7 +39,7 @@ export class InvoiceTemplatesService {
 
     return this.prisma.invoiceTemplate.create({
       data: {
-        organizationId: dto.organizationId,
+        organizationId,
         key: dto.key,
         name: dto.name,
         headerHtml: dto.headerHtml,
@@ -53,10 +53,10 @@ export class InvoiceTemplatesService {
     });
   }
 
-  async findAll(query: InvoiceTemplateQueryDto) {
+  async findAll(query: InvoiceTemplateQueryDto, organizationId: string) {
     return this.prisma.invoiceTemplate.findMany({
       where: {
-        ...(query.organizationId ? { organizationId: query.organizationId } : {}),
+        organizationId,
         ...(query.key ? { key: query.key } : {}),
         ...(query.isDefault !== undefined ? { isDefault: query.isDefault } : {}),
         ...(query.isActive !== undefined ? { isActive: query.isActive } : {}),
@@ -65,14 +65,19 @@ export class InvoiceTemplatesService {
     });
   }
 
-  async findOne(id: string) {
-    const entity = await this.prisma.invoiceTemplate.findUnique({ where: { id } });
+  async findOne(id: string, organizationId: string) {
+    const entity = await this.prisma.invoiceTemplate.findFirst({
+      where: {
+        id,
+        organizationId,
+      },
+    });
     if (!entity) throw new NotFoundException('Invoice template not found');
     return entity;
   }
 
-  async update(id: string, dto: UpdateInvoiceTemplateDto) {
-    const existing = await this.findOne(id);
+  async update(id: string, dto: UpdateInvoiceTemplateDto, organizationId: string) {
+    const existing = await this.findOne(id, organizationId);
 
     const data: Prisma.InvoiceTemplateUpdateInput = {
       ...(dto.name !== undefined ? { name: dto.name } : {}),
@@ -111,8 +116,8 @@ export class InvoiceTemplatesService {
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, organizationId: string) {
+    await this.findOne(id, organizationId);
     await this.prisma.invoiceTemplate.delete({ where: { id } });
     return { deleted: true, id };
   }
