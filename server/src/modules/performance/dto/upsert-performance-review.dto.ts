@@ -12,7 +12,7 @@ import {
 
 export class UpsertPerformanceReviewDto {
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   organizationId!: string;
 
   @IsString()
