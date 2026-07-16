@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
@@ -19,24 +20,31 @@ import { CreateAssetDto } from '../dto/create-asset.dto';
 import { RunDepreciationDto } from '../dto/run-depreciation.dto';
 
 @Controller('assets')
+@UseGuards(JwtAuthGuard)
 export class AssetsController {
   constructor(private readonly assetsService: AssetsService) {}
 
   @Get('status')
-  status(@Query('organizationId') organizationId?: string) {
-    return this.assetsService.getStatus(organizationId);
+  status(@Req() req: { user: { organizationId: string } }) {
+    return this.assetsService.getStatus(req.user.organizationId);
   }
 
   @Get()
-  listAssets(@Query() query: AssetQueryDto) {
-    return this.assetsService.listAssets(query);
+  listAssets(@Query() query: AssetQueryDto, @Req() req: { user: { organizationId: string } }) {
+    return this.assetsService.listAssets({
+      ...query,
+      organizationId: req.user.organizationId,
+    });
   }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER)
-  createAsset(@Body() dto: CreateAssetDto) {
-    return this.assetsService.createAsset(dto);
+  createAsset(@Body() dto: CreateAssetDto, @Req() req: { user: { organizationId: string } }) {
+    return this.assetsService.createAsset({
+      ...dto,
+      organizationId: req.user.organizationId,
+    });
   }
 
   @Patch(':id/assign')
@@ -49,7 +57,13 @@ export class AssetsController {
   @Post('depreciation')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-  depreciation(@Body() dto: RunDepreciationDto) {
-    return this.assetsService.runDepreciation(dto);
+  depreciation(
+    @Body() dto: RunDepreciationDto,
+    @Req() req: { user: { organizationId: string } },
+  ) {
+    return this.assetsService.runDepreciation({
+      ...dto,
+      organizationId: req.user.organizationId,
+    });
   }
 }
