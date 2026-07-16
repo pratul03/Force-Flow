@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -50,6 +51,7 @@ const designationResponseExample = {
 
 @ApiTags('Designations')
 @Controller('designations')
+@UseGuards(JwtAuthGuard)
 export class DesignationsController {
   constructor(private readonly designationsService: DesignationsService) {}
 
@@ -76,9 +78,13 @@ export class DesignationsController {
   @ApiForbiddenResponse({ description: 'Insufficient role permission' })
   async create(
     @Body() dto: CreateDesignationDto,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<DesignationResponseDto> {
     return (await this.designationsService.create(
-      dto,
+      {
+        ...dto,
+        organizationId: req.user.organizationId,
+      },
     )) as DesignationResponseDto;
   }
 
@@ -97,10 +103,10 @@ export class DesignationsController {
     schema: { example: [designationResponseExample] },
   })
   async findAll(
-    @Query('organizationId') organizationId?: string,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<DesignationResponseDto[]> {
     return (await this.designationsService.findAll(
-      organizationId,
+      req.user.organizationId,
     )) as DesignationResponseDto[];
   }
 
@@ -116,8 +122,11 @@ export class DesignationsController {
     type: DesignationResponseDto,
     schema: { example: designationResponseExample },
   })
-  findOne(@Param('id') id: string): Promise<DesignationResponseDto> {
-    return this.designationsService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @Req() req: { user: { organizationId: string } },
+  ): Promise<DesignationResponseDto> {
+    return this.designationsService.findOne(id, req.user.organizationId);
   }
 
   @Patch(':id')
@@ -158,8 +167,9 @@ export class DesignationsController {
   update(
     @Param('id') id: string,
     @Body() dto: UpdateDesignationDto,
+    @Req() req: { user: { organizationId: string } },
   ): Promise<DesignationResponseDto> {
-    return this.designationsService.update(id, dto);
+    return this.designationsService.update(id, dto, req.user.organizationId);
   }
 
   @Delete(':id')
@@ -184,7 +194,10 @@ export class DesignationsController {
   })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   @ApiForbiddenResponse({ description: 'Insufficient role permission' })
-  remove(@Param('id') id: string): Promise<DeleteDesignationResponseDto> {
-    return this.designationsService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @Req() req: { user: { organizationId: string } },
+  ): Promise<DeleteDesignationResponseDto> {
+    return this.designationsService.remove(id, req.user.organizationId);
   }
 }
