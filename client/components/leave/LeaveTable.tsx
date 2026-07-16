@@ -1,6 +1,6 @@
 "use client";
 
-import { LeaveRequest } from "@/lib/types";
+import { BackendLeave } from "@/features/leaves/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,25 +22,31 @@ import { MoreHorizontal, Edit, Trash2, Check, X } from "lucide-react";
 import { format } from "date-fns";
 
 interface LeaveTableProps {
-  requests: LeaveRequest[];
+  requests: BackendLeave[];
   onApprove?: (requestId: string) => void;
   onReject?: (requestId: string) => void;
-  onEdit?: (request: LeaveRequest) => void;
+  onEdit?: (request: BackendLeave) => void;
   onDelete?: (requestId: string) => void;
   isLoading?: boolean;
 }
 
-const statusColors = {
-  pending: "bg-yellow-100 text-yellow-800",
-  approved: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
+const statusColors: Record<string, string> = {
+  PENDING: "bg-yellow-100 text-yellow-800",
+  APPROVED: "bg-green-100 text-green-800",
+  REJECTED: "bg-red-100 text-red-800",
+  CANCELLED: "bg-gray-100 text-gray-800",
 };
 
-const typeColors = {
-  vacation: "bg-blue-100 text-blue-800",
-  sick: "bg-red-100 text-red-800",
-  personal: "bg-purple-100 text-purple-800",
-  unpaid: "bg-gray-100 text-gray-800",
+const typeColors: Record<string, string> = {
+  SICK: "bg-red-100 text-red-800",
+  CASUAL: "bg-blue-100 text-blue-800",
+  EARNED: "bg-purple-100 text-purple-800",
+  UNPAID: "bg-gray-100 text-gray-800",
+  MATERNITY: "bg-pink-100 text-pink-800",
+  PATERNITY: "bg-pink-100 text-pink-800",
+  BEREAVEMENT: "bg-slate-100 text-slate-800",
+  MARRIAGE: "bg-indigo-100 text-indigo-800",
+  COMP_OFF: "bg-emerald-100 text-emerald-800",
 };
 
 export function LeaveTable({
@@ -90,14 +96,14 @@ export function LeaveTable({
           {requests.map((request) => (
             <TableRow key={request.id} className="hover:bg-gray-50">
               <TableCell className="font-medium">
-                <div className="text-sm">{request.employeeId}</div>
+                <div className="text-sm">{request.userId}</div>
               </TableCell>
               <TableCell>
                 <Badge
-                  className={`text-xs ${typeColors[request.type]}`}
+                  className={`text-xs ${typeColors[request.leaveType] || "bg-gray-100 text-gray-800"}`}
                   variant="outline"
                 >
-                  {request.type}
+                  {request.leaveType}
                 </Badge>
               </TableCell>
               <TableCell className="text-sm">
@@ -114,7 +120,7 @@ export function LeaveTable({
               </TableCell>
               <TableCell>
                 <Badge
-                  className={`text-xs ${statusColors[request.status]}`}
+                  className={`text-xs ${statusColors[request.status] || "bg-gray-100 text-gray-800"}`}
                   variant="outline"
                 >
                   {request.status}
@@ -128,7 +134,7 @@ export function LeaveTable({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {request.status === "pending" && (
+                    {request.status === "PENDING" && (
                       <>
                         <DropdownMenuItem
                           onClick={() => onApprove?.(request.id)}
@@ -146,7 +152,7 @@ export function LeaveTable({
                         </DropdownMenuItem>
                       </>
                     )}
-                    {request.status !== "approved" && (
+                    {request.status !== "APPROVED" && (
                       <DropdownMenuItem onClick={() => onEdit?.(request)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
