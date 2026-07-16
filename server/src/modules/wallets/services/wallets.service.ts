@@ -1,10 +1,18 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { Currency, Prisma, QueueJob, TransactionStatus, TransactionType } from '@prisma/client';
+import {
+  Currency,
+  Prisma,
+  QueueJob,
+  Role,
+  TransactionStatus,
+  TransactionType,
+} from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { QueueService } from '../../queue/services/queue.service';
 import { CreateWalletTransactionDto } from '../dto/create-wallet-transaction.dto';
@@ -13,6 +21,12 @@ import { RequestWithdrawalDto } from '../dto/request-withdrawal.dto';
 @Injectable()
 export class WalletsService implements OnModuleInit {
   private readonly highValueWithdrawalThreshold = 100000;
+  private readonly elevatedRoles = new Set<Role>([
+    Role.SUPER_ADMIN,
+    Role.ADMIN,
+    Role.HR_MANAGER,
+    Role.MANAGER,
+  ]);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -25,7 +39,12 @@ export class WalletsService implements OnModuleInit {
     });
   }
 
-  async getUserWallet(userId: string) {
+  async getUserWallet(
+    userId: string,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    await this.assertUserAccess(userId, actor);
+
     const wallet = await this.prisma.wallet.findUnique({
       where: { userId },
       include: {
@@ -43,8 +62,16 @@ export class WalletsService implements OnModuleInit {
     return wallet;
   }
 
-  async bootstrapWallet(userId: string, currency?: Currency) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  async bootstrapWallet(
+    userId: string,
+    currency: Currency | undefined,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    await this.assertUserAccess(userId, actor);
+
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, organizationId: actor.organizationId },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -59,8 +86,15 @@ export class WalletsService implements OnModuleInit {
     });
   }
 
-  async createTransaction(dto: CreateWalletTransactionDto) {
-    const user = await this.prisma.user.findUnique({ where: { id: dto.userId } });
+  async createTransaction(
+    dto: CreateWalletTransactionDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    await this.assertUserAccess(dto.userId, actor);
+
+    const user = await this.prisma.user.findFirst({
+      where: { id: dto.userId, organizationId: actor.organizationId },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -123,8 +157,15 @@ export class WalletsService implements OnModuleInit {
     });
   }
 
-  async requestWithdrawal(dto: RequestWithdrawalDto) {
-    const user = await this.prisma.user.findUnique({ where: { id: dto.userId } });
+  async requestWithdrawal(
+    dto: RequestWithdrawalDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    await this.assertUserAccess(dto.userId, actor);
+
+    const user = await this.prisma.user.findFirst({
+      where: { id: dto.userId, organizationId: actor.organizationId },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -193,14 +234,39 @@ export class WalletsService implements OnModuleInit {
     };
   }
 
-  async retryWithdrawal(transactionId: string) {
+  async retryWithdrawal(
+    transactionId: string,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
     const transaction = await this.prisma.walletTransaction.findUnique({
       where: { id: transactionId },
-      include: { wallet: true },
+      include: {
+        wallet: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                organizationId: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!transaction) {
       throw new NotFoundException('Withdrawal transaction not found');
+    }
+
+    if (transaction.wallet.user.organizationId !== actor.organizationId) {
+      throw new NotFoundException('Withdrawal transaction not found');
+    }
+
+    if (
+      transaction.wallet.user.id !== actor.sub &&
+      !this.elevatedRoles.has(actor.role as Role)
+    ) {
+      throw new ForbiddenException('You can only retry your own withdrawals');
     }
 
     if (transaction.status !== TransactionStatus.FAILED) {
@@ -249,15 +315,36 @@ export class WalletsService implements OnModuleInit {
     };
   }
 
-  async listTransactions(userId?: string) {
-    if (!userId) {
+  async listTransactions(
+    userId: string | undefined,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    const scopedUserId = userId ?? this.defaultUserScope(actor);
+
+    if (!scopedUserId) {
       return this.prisma.walletTransaction.findMany({
+        where: {
+          wallet: {
+            user: {
+              organizationId: actor.organizationId,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
         take: 100,
       });
     }
 
-    const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
+    await this.assertUserAccess(scopedUserId, actor);
+
+    const wallet = await this.prisma.wallet.findFirst({
+      where: {
+        userId: scopedUserId,
+        user: {
+          organizationId: actor.organizationId,
+        },
+      },
+    });
     if (!wallet) {
       return [];
     }
@@ -401,5 +488,30 @@ export class WalletsService implements OnModuleInit {
       payload,
       maxAttempts: 5,
     });
+  }
+
+  private async assertUserAccess(
+    targetUserId: string,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: targetUserId,
+        organizationId: actor.organizationId,
+      },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found in your organization');
+    }
+
+    if (targetUserId !== actor.sub && !this.elevatedRoles.has(actor.role as Role)) {
+      throw new ForbiddenException('You can only access your own wallet data');
+    }
+  }
+
+  private defaultUserScope(actor: { sub: string; role: string }) {
+    return this.elevatedRoles.has(actor.role as Role) ? undefined : actor.sub;
   }
 }
