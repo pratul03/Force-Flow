@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Designation" ADD COLUMN     "currency" TEXT NOT NULL DEFAULT 'USD',
+ADD COLUMN     "maxSalary" DOUBLE PRECISION,
+ADD COLUMN     "minSalary" DOUBLE PRECISION;
