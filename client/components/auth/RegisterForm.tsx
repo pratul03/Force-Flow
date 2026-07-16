@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/card";
 import { AlertCircle, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { authApi, mapBackendUserToAuthUser } from "@/lib/api";
+import { authApi } from "@/features/auth/api";
+import { mapBackendUserToAuthUser } from "@/features/auth/utils";
 import { LoginResponse } from "@/lib/types";
-import { useAuthStore } from "@/lib/stores/authStore";
+import { useAuthStore } from "@/features/auth/store";
 import { AnimatedFormCard } from "@/components/animations/AnimatedFormCard";
 import { ButtonLoadingSkeleton } from "@/components/ui/loading-skeletons";
 
