@@ -11,8 +11,8 @@ import {
   ListLoadingSkeleton,
 } from "@/components/ui/loading-skeletons";
 import { Textarea } from "@/components/ui/textarea";
-import { quotationsApi } from "@/lib/api";
-import { BackendQuotation } from "@/lib/types";
+import { quotationsApi } from "@/features/quotations/api";
+import { BackendQuotation } from "@/features/quotations/types";
 
 export default function PublicQuotationResponsePage() {
   const params = useParams<{ token: string }>();
