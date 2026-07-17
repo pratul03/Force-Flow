@@ -1,48 +1,62 @@
+import { apiClient } from '@/lib/api-client';
 import { ApiResponse } from '@/lib/types';
-import { BackendLeave, CreateLeavePayload, UpdateLeaveStatusPayload } from './types';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import {
+  BackendLeave,
+  CreateLeavePayload,
+  UpdateLeavePayload,
+  LeaveApprovalPayload,
+  LeaveRejectionPayload,
+  LeaveCancelPayload,
+  LeavesQueryFilters,
+} from './types';
 
 export const leavesApi = {
-  async getAll(organizationId?: string): Promise<ApiResponse<BackendLeave[]>> {
-    let url = `${API_BASE_URL}/leaves`;
-    if (organizationId) {
-      url += `?organizationId=${encodeURIComponent(organizationId)}`;
-    }
-    const response = await fetch(url);
-    return response.json();
+  getAll: (filters?: LeavesQueryFilters) => {
+    const params = new URLSearchParams();
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.approverId) params.append('approverId', filters.approverId);
+    if (filters?.status) params.append('status', filters.status);
+    
+    const queryString = params.toString();
+    return apiClient.get<BackendLeave[]>(`/leaves${queryString ? `?${queryString}` : ''}`);
   },
 
-  async getMyLeaves(userId: string): Promise<ApiResponse<BackendLeave[]>> {
-    const response = await fetch(`${API_BASE_URL}/leaves/user/${encodeURIComponent(userId)}`);
-    return response.json();
+  getPending: (approverId?: string) => {
+    const params = new URLSearchParams();
+    if (approverId) params.append('approverId', approverId);
+    const queryString = params.toString();
+    return apiClient.get<BackendLeave[]>(`/leaves/pending${queryString ? `?${queryString}` : ''}`);
   },
 
-  async create(payload: CreateLeavePayload): Promise<ApiResponse<BackendLeave>> {
-    const response = await fetch(`${API_BASE_URL}/leaves`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    return response.json();
+  getOne: (id: string) => {
+    return apiClient.get<BackendLeave>(`/leaves/${id}`);
   },
 
-  async updateStatus(
-    leaveId: string,
-    payload: UpdateLeaveStatusPayload
-  ): Promise<ApiResponse<BackendLeave>> {
-    const response = await fetch(`${API_BASE_URL}/leaves/${encodeURIComponent(leaveId)}/status`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    return response.json();
+  create: (payload: CreateLeavePayload) => {
+    return apiClient.post<BackendLeave>('/leaves', payload);
   },
 
-  async delete(leaveId: string): Promise<ApiResponse<void>> {
-    const response = await fetch(`${API_BASE_URL}/leaves/${encodeURIComponent(leaveId)}`, {
-      method: 'DELETE',
-    });
-    return response.json();
+  apply: (payload: CreateLeavePayload) => {
+    return apiClient.post<BackendLeave>('/leaves/apply', payload);
+  },
+
+  update: (id: string, payload: UpdateLeavePayload) => {
+    return apiClient.patch<BackendLeave>(`/leaves/${id}`, payload);
+  },
+
+  approve: (id: string, payload: LeaveApprovalPayload = {}) => {
+    return apiClient.post<BackendLeave>(`/leaves/${id}/approve`, payload);
+  },
+
+  reject: (id: string, payload: LeaveRejectionPayload) => {
+    return apiClient.post<BackendLeave>(`/leaves/${id}/reject`, payload);
+  },
+
+  cancel: (id: string, payload: LeaveCancelPayload = {}) => {
+    return apiClient.post<BackendLeave>(`/leaves/${id}/cancel`, payload);
+  },
+
+  delete: (id: string) => {
+    return apiClient.delete<{ deleted: boolean; id: string }>(`/leaves/${id}`);
   },
 };
