@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateShiftDto {
   @IsString()
@@ -19,13 +19,20 @@ export class CreateShiftDto {
 
   @IsInt()
   @Min(0)
-  @Max(120)
   @IsOptional()
-  graceTimeMinutes?: number;
+  gracePeriodMins?: number;
 
   @IsInt()
   @Min(0)
-  @Max(240)
   @IsOptional()
-  breakDurationMinutes?: number;
+  halfDayMarkMins?: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  workingDays?: number[];
+
+  @IsBoolean()
+  @IsOptional()
+  isDefault?: boolean;
 }
