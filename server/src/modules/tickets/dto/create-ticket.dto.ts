@@ -1,4 +1,4 @@
-import { TicketPriority } from '@prisma/client';
+import { TicketPriority, TicketStatus } from '@prisma/client';
 import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateTicketDto {
@@ -27,4 +27,8 @@ export class CreateTicketDto {
   @IsString()
   @IsOptional()
   assigneeId?: string;
+
+  @IsEnum(TicketStatus)
+  @IsOptional()
+  status?: TicketStatus;
 }
