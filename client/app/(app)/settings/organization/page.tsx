@@ -14,6 +14,8 @@ import { organizationsApi } from "@/features/organizations/api";
 import { toast } from "sonner";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { ImageUpload } from "@/components/shared/ImageUpload";
+import { uploadsApi } from "@/features/uploads/api";
 
 export default function OrganizationSettingsPage() {
   const { user } = useAuth();
@@ -27,7 +29,10 @@ export default function OrganizationSettingsPage() {
     timezone: "UTC",
     baseHourlyRate: "",
     overtimeMultiplier: "",
+    logoUrl: "",
   });
+
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -45,6 +50,7 @@ export default function OrganizationSettingsPage() {
             timezone: org.timezone || "UTC",
             baseHourlyRate: org.baseHourlyRate?.toString() || "0",
             overtimeMultiplier: org.overtimeMultiplier?.toString() || "1",
+            logoUrl: org.logoUrl || "",
           });
         }
       } catch (err) {
@@ -77,6 +83,42 @@ export default function OrganizationSettingsPage() {
       toast.error(res.error || "Failed to update settings");
     }
     setIsSaving(false);
+  };
+
+  const handleLogoUpload = async (file: File) => {
+    if (!user?.organizationId) return;
+    try {
+      setIsUploadingLogo(true);
+      const res = await uploadsApi.uploadOrganizationLogoDirect(user.organizationId, file);
+      if (res.success && res.data) {
+        toast.success("Logo updated successfully");
+        setFormData(prev => ({ ...prev, logoUrl: res.data?.logoUrl || "" }));
+      } else {
+        throw new Error(res.error || "Failed to upload logo");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Error uploading logo");
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleLogoRemove = async () => {
+    if (!user?.organizationId) return;
+    try {
+      setIsUploadingLogo(true);
+      const res = await uploadsApi.deleteOrganizationLogo(user.organizationId);
+      if (res.success) {
+        toast.success("Logo removed successfully");
+        setFormData(prev => ({ ...prev, logoUrl: "" }));
+      } else {
+        throw new Error(res.error || "Failed to remove logo");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Error removing logo");
+    } finally {
+      setIsUploadingLogo(false);
+    }
   };
 
   if (!user || (user.role !== "SUPER_ADMIN" && user.role !== "ADMIN")) {
@@ -118,24 +160,40 @@ export default function OrganizationSettingsPage() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Organization Name</Label>
-                        <Input
-                          id="name"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          required
-                        />
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <Label>Organization Logo</Label>
+                          <div className="w-48">
+                            <ImageUpload
+                              currentImageUrl={formData.logoUrl}
+                              onUpload={handleLogoUpload}
+                              onRemove={handleLogoRemove}
+                              isUploading={isUploadingLogo}
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="country">Operating Country</Label>
-                        <Input
-                          id="country"
-                          value={formData.country}
-                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                          placeholder="e.g. United States"
-                          required
-                        />
+                      
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Organization Name</Label>
+                          <Input
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="country">Operating Country</Label>
+                          <Input
+                            id="country"
+                            value={formData.country}
+                            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                            placeholder="e.g. United States"
+                            required
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
