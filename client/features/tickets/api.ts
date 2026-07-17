@@ -7,7 +7,10 @@ import {
   UpdateTicketStatusPayload,
   BackendTicketComment,
   BackendTicketStatusEvent,
-  AddTicketCommentPayload
+  AddTicketCommentPayload,
+  ReorderTicketsPayload,
+  SwapTicketsPayload,
+  UpdateTicketDetailsPayload,
 } from './types';
 
 export type ListTicketsParams = {
@@ -25,6 +28,9 @@ export const ticketsApi = {
     
   getById: (id: string) => 
     apiClient.get<BackendTicket>(`/tickets/${id}`),
+
+  getBySlug: (slug: string) =>
+    apiClient.get<BackendTicket>(`/tickets/by-slug/${slug}`),
     
   create: (data: CreateTicketPayload) => 
     apiClient.post<BackendTicket>('/tickets', data),
@@ -35,6 +41,15 @@ export const ticketsApi = {
   updateStatus: (id: string, data: UpdateTicketStatusPayload) => 
     apiClient.patch<BackendTicket>(`/tickets/${id}/status`, data),
     
+  updateDetails: (id: string, data: UpdateTicketDetailsPayload) =>
+    apiClient.patch<BackendTicket>(`/tickets/${id}`, data),
+    
+  reorder: (data: ReorderTicketsPayload) =>
+    apiClient.patch<void>(`/tickets/reorder`, data),
+
+  swap: (data: SwapTicketsPayload) =>
+    apiClient.patch<void>(`/tickets/swap`, data),
+
   comments: (id: string, params: { actorUserId: string; limit?: number }) =>
     apiClient.get<BackendTicketComment[]>(`/tickets/${id}/comments${buildQuery(params)}`),
     
