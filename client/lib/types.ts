@@ -194,6 +194,7 @@ export interface BackendTicket {
   description: string;
   priority: TicketPriority;
   status: TicketStatus;
+  orderIndex: number;
   assignedAt?: string | null;
   resolutionNote?: string | null;
   resolvedAt?: string | null;
@@ -428,6 +429,7 @@ export interface DashboardChartsData {
 }
 
 export interface ApiResponse<T> {
+  id: any;
   success: boolean;
   data?: T;
   error?: string;
