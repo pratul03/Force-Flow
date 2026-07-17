@@ -5,9 +5,17 @@ import {
   Role,
   UserStatus,
 } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsEmail, IsDateString } from 'class-validator';
 
 export class UpdateUserDto {
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @IsDateString()
+  @IsOptional()
+  joiningDate?: string;
+
   @IsString()
   @IsOptional()
   firstName?: string;
