@@ -59,7 +59,7 @@ maybe_push() {
     return
   fi
   echo "  ⬆️  Pushing batch to origin/$BRANCH ..."
-  git push origin "$BRANCH" --quiet
+  git push -f origin "$BRANCH" --quiet
 }
 
 echo ""
@@ -112,7 +112,7 @@ done
 if [[ "$DRY_RUN" == false ]]; then
   echo ""
   echo "  ⬆️  Final push to origin/$BRANCH ..."
-  git push origin "$BRANCH" --quiet 2>/dev/null || true
+  git push -f origin "$BRANCH" --quiet 2>/dev/null || true
 fi
 
 echo ""
