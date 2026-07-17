@@ -3,6 +3,8 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  OnModuleInit,
+  Logger,
 } from '@nestjs/common';
 import { Role, TicketPriority, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -10,12 +12,25 @@ import { QueueService } from '../../queue/services/queue.service';
 import { AssignTicketDto } from '../dto/assign-ticket.dto';
 import { CreateTicketCommentDto } from '../dto/create-ticket-comment.dto';
 import { CreateTicketDto } from '../dto/create-ticket.dto';
+import { UpdateTicketDetailsDto } from '../dto/update-ticket-details.dto';
 import { TicketActorQueryDto } from '../dto/ticket-actor-query.dto';
+import * as crypto from 'crypto';
 import { TicketsQueryDto } from '../dto/tickets-query.dto';
 import { UpdateTicketStatusDto } from '../dto/update-ticket-status.dto';
+import { TicketsGateway } from '../gateways/tickets.gateway';
 
 @Injectable()
-export class TicketsService {
+export class TicketsService implements OnModuleInit {
+  private readonly logger = new Logger(TicketsService.name);
+
+  // SLA Thresholds in hours
+  private readonly SLA_THRESHOLDS = {
+    [TicketPriority.CRITICAL]: { assign: 1, resolve: 4 },
+    [TicketPriority.HIGH]: { assign: 4, resolve: 24 },
+    [TicketPriority.MEDIUM]: { assign: 24, resolve: 72 },
+    [TicketPriority.LOW]: { assign: 48, resolve: 120 },
+  };
+
   private readonly adminRoles = new Set<Role>([
     Role.SUPER_ADMIN,
     Role.ADMIN,
@@ -34,14 +49,92 @@ export class TicketsService {
   ]);
 
   private readonly restrictedSupportStatuses = new Set<TicketStatus>([
-    TicketStatus.OPEN,
     TicketStatus.ASSIGNED,
   ]);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
+    private readonly ticketsGateway: TicketsGateway,
   ) {}
+
+  onModuleInit() {
+    this.queueService.registerHandler('tickets.check-sla', async () => {
+      await this.processSlaBreaches();
+    });
+  }
+
+  async processSlaBreaches() {
+    this.logger.log('Starting SLA Engine check...');
+    
+    // Check OPEN tickets for Assignment SLA
+    const openTickets = await this.prisma.ticket.findMany({
+      where: { status: TicketStatus.OPEN },
+    });
+    
+    for (const ticket of openTickets) {
+      const thresholds = this.SLA_THRESHOLDS[ticket.priority];
+      const limitHours = thresholds.assign;
+      const elapsedHours = (Date.now() - ticket.createdAt.getTime()) / (1000 * 60 * 60);
+      
+      if (elapsedHours > limitHours) {
+        await this.handleSlaBreach(ticket, `Time to Assign SLA Breached (${limitHours}h limit)`);
+      }
+    }
+    
+    // Check ASSIGNED/IN_PROGRESS tickets for Resolution SLA
+    const activeTickets = await this.prisma.ticket.findMany({
+      where: { status: { in: [TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS] } },
+    });
+    
+    for (const ticket of activeTickets) {
+      const thresholds = this.SLA_THRESHOLDS[ticket.priority];
+      const limitHours = thresholds.resolve;
+      const elapsedHours = (Date.now() - ticket.createdAt.getTime()) / (1000 * 60 * 60);
+      
+      if (elapsedHours > limitHours) {
+        await this.handleSlaBreach(ticket, `Time to Resolve SLA Breached (${limitHours}h limit)`);
+      }
+    }
+    
+    this.logger.log('SLA Engine check completed.');
+  }
+
+  private async handleSlaBreach(ticket: any, note: string) {
+    await this.prisma.$transaction([
+      this.prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { status: TicketStatus.TIMED_OUT },
+      }),
+      this.prisma.ticketStatusEvent.create({
+        data: {
+          ticketId: ticket.id,
+          actorUserId: ticket.requesterId,
+          fromStatus: ticket.status,
+          toStatus: TicketStatus.TIMED_OUT,
+          note: note,
+        },
+      }),
+    ]);
+    
+    await this.queueService.enqueue({
+      type: 'notification.send',
+      payload: {
+        userId: ticket.assigneeId || ticket.requesterId,
+        channel: 'in-app',
+        title: 'Ticket SLA Breached!',
+        message: `Ticket ${ticket.title} was marked as TIMED_OUT: ${note}`,
+        locale: 'en',
+        metadata: { ticketId: ticket.id, status: TicketStatus.TIMED_OUT },
+      },
+    });
+
+    const updatedTicket = await this.findOne(ticket.id);
+    if (updatedTicket) {
+      this.ticketsGateway.broadcastTicketUpdate(ticket.organizationId, 'ticket.updated', updatedTicket);
+    }
+    this.logger.warn(`Ticket ${ticket.id} SLA breached: ${note}`);
+  }
 
   findAll(query: TicketsQueryDto) {
     return this.prisma.ticket.findMany({
@@ -70,7 +163,7 @@ export class TicketsService {
           },
         },
       },
-      orderBy: [{ status: 'asc' }, { updatedAt: 'desc' }],
+      orderBy: [{ orderIndex: 'asc' }, { createdAt: 'desc' }],
       take: query.limit ?? 200,
     });
   }
@@ -82,27 +175,34 @@ export class TicketsService {
         ...(organizationId ? { organizationId } : {}),
       },
       include: {
-        requester: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-        assignee: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
+        requester: { select: { id: true, firstName: true, lastName: true, email: true, role: true } },
+        assignee: { select: { id: true, firstName: true, lastName: true, email: true, role: true } },
+        assignedBy: { select: { id: true, firstName: true, lastName: true, email: true, role: true } },
       },
     });
 
     if (!ticket) {
-      throw new NotFoundException('Ticket not found');
+      throw new NotFoundException(`Ticket with ID ${id} not found`);
+    }
+
+    return ticket;
+  }
+
+  async findOneBySlug(slug: string, organizationId?: string) {
+    const ticket = await this.prisma.ticket.findFirst({
+      where: { 
+        slug,
+        ...(organizationId ? { organizationId } : {}),
+      },
+      include: {
+        requester: { select: { id: true, firstName: true, lastName: true, email: true, role: true } },
+        assignee: { select: { id: true, firstName: true, lastName: true, email: true, role: true } },
+        assignedBy: { select: { id: true, firstName: true, lastName: true, email: true, role: true } },
+      },
+    });
+
+    if (!ticket) {
+      throw new NotFoundException(`Ticket with slug ${slug} not found`);
     }
 
     return ticket;
@@ -126,8 +226,9 @@ export class TicketsService {
         assigneeId: dto.assigneeId,
         title: dto.title,
         description: dto.description,
+        slug: `TKT-${crypto.randomBytes(3).toString('hex').toUpperCase()}`,
         priority: dto.priority ?? TicketPriority.MEDIUM,
-        status: dto.assigneeId ? TicketStatus.ASSIGNED : TicketStatus.OPEN,
+        status: dto.status ?? (dto.assigneeId ? TicketStatus.ASSIGNED : TicketStatus.OPEN),
         assignedAt: dto.assigneeId ? new Date() : null,
       },
     });
@@ -170,7 +271,11 @@ export class TicketsService {
       });
     }
 
-    return this.findOne(ticket.id);
+    const updatedTicket = await this.findOne(ticket.id);
+    if (updatedTicket) {
+      this.ticketsGateway.broadcastTicketUpdate(dto.organizationId, 'ticket.created', updatedTicket);
+    }
+    return updatedTicket;
   }
 
   async assign(ticketId: string, dto: AssignTicketDto) {
@@ -229,7 +334,43 @@ export class TicketsService {
       },
     });
 
-    return this.findOne(ticketId);
+    const updatedTicket = await this.findOne(ticketId);
+    if (updatedTicket) {
+      this.ticketsGateway.broadcastTicketUpdate(ticket.organizationId, 'ticket.updated', updatedTicket);
+    }
+    return updatedTicket;
+  }
+
+  async updateDetails(ticketId: string, dto: UpdateTicketDetailsDto) {
+    const access = await this.assertTicketAccess(ticketId, dto.actorUserId);
+
+    if (!access.isRequester && !access.isAdmin) {
+      throw new ForbiddenException('Only the ticket creator or admin can edit the ticket details');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.ticket.update({
+        where: { id: ticketId },
+        data: {
+          title: dto.title,
+          description: dto.description,
+        },
+      }),
+      this.prisma.ticketStatusEvent.create({
+        data: {
+          ticketId,
+          actorUserId: dto.actorUserId,
+          toStatus: access.ticket.status,
+          note: 'Updated ticket details',
+        },
+      }),
+    ]);
+
+    const updatedTicket = await this.findOne(ticketId, access.ticket.organizationId);
+    if (updatedTicket) {
+      this.ticketsGateway.broadcastTicketUpdate(access.ticket.organizationId, 'ticket.updated', updatedTicket);
+    }
+    return updatedTicket;
   }
 
   async updateStatus(ticketId: string, dto: UpdateTicketStatusDto) {
@@ -252,19 +393,15 @@ export class TicketsService {
     }
 
     const isTerminal = this.terminalStatuses.has(dto.status);
-    const note = dto.resolutionNote?.trim();
-
-    if (isTerminal && !note) {
-      throw new BadRequestException(
-        'resolutionNote is required for RESOLVED, FAILED, or TIMED_OUT status',
-      );
-    }
+    const note = dto.resolutionNote?.trim() || null;
 
     await this.prisma.$transaction([
       this.prisma.ticket.update({
         where: { id: ticketId },
         data: {
           status: dto.status,
+          assigneeId: dto.status === TicketStatus.OPEN ? null : undefined,
+          assignedAt: dto.status === TicketStatus.OPEN ? null : undefined,
           resolvedAt: isTerminal ? new Date() : null,
           resolutionNote: isTerminal ? note : null,
         },
@@ -296,7 +433,11 @@ export class TicketsService {
       },
     });
 
-    return this.findOne(ticketId);
+    const updatedTicket = await this.findOne(ticketId);
+    if (updatedTicket) {
+      this.ticketsGateway.broadcastTicketUpdate(ticket.organizationId, 'ticket.updated', updatedTicket);
+    }
+    return updatedTicket;
   }
 
   async listComments(ticketId: string, query: TicketActorQueryDto) {
@@ -411,6 +552,7 @@ export class TicketsService {
           organizationId: true,
           requesterId: true,
           assigneeId: true,
+          status: true,
         },
       }),
       this.getUserOrThrow(actorUserId),
@@ -443,5 +585,47 @@ export class TicketsService {
     if (userOrganizationId !== organizationId) {
       throw new BadRequestException('User must belong to the same organization');
     }
+  }
+
+  async reorderTickets(organizationId: string, updates: { id: string; orderIndex: number }[]) {
+    const res = await this.prisma.$transaction(
+      updates.map((update) =>
+        this.prisma.ticket.updateMany({
+          where: { id: update.id, organizationId },
+          data: { orderIndex: update.orderIndex },
+        }),
+      ),
+    );
+    this.ticketsGateway.broadcastTicketUpdate(organizationId, 'tickets.reordered', updates);
+    return res;
+  }
+
+  async swapTickets(organizationId: string, ticket1Id: string, ticket2Id: string) {
+    const [t1, t2] = await Promise.all([
+      this.prisma.ticket.findFirst({ where: { id: ticket1Id, organizationId } }),
+      this.prisma.ticket.findFirst({ where: { id: ticket2Id, organizationId } }),
+    ]);
+
+    if (!t1 || !t2) {
+      throw new NotFoundException('One or both tickets not found');
+    }
+
+    const res = await this.prisma.$transaction([
+      this.prisma.ticket.update({
+        where: { id: t1.id },
+        data: { orderIndex: t2.orderIndex },
+      }),
+      this.prisma.ticket.update({
+        where: { id: t2.id },
+        data: { orderIndex: t1.orderIndex },
+      }),
+    ]);
+    
+    this.ticketsGateway.broadcastTicketUpdate(organizationId, 'tickets.swapped', {
+      ticket1: { id: t1.id, orderIndex: t2.orderIndex },
+      ticket2: { id: t2.id, orderIndex: t1.orderIndex },
+    });
+    
+    return res;
   }
 }
