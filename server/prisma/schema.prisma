@@ -516,7 +516,10 @@ model Shift {
   name                 String
   startTime            String
   endTime              String
-  graceTimeMinutes     Int               @default(15)
+  gracePeriodMins      Int               @default(15)
+  halfDayMarkMins      Int               @default(240)
+  workingDays          Int[]             @default([1, 2, 3, 4, 5])
+  isDefault            Boolean           @default(false)
   breakDurationMinutes Int               @default(60)
   isActive             Boolean           @default(true)
   assignments          ShiftAssignment[]
@@ -615,6 +618,7 @@ model Leave {
 
 model Ticket {
   id             String              @id @default(cuid())
+  slug           String              @unique @default(cuid())
   organizationId String
   organization   Organization        @relation(fields: [organizationId], references: [id])
   requesterId    String
@@ -627,6 +631,7 @@ model Ticket {
   description    String
   priority       TicketPriority      @default(MEDIUM)
   status         TicketStatus        @default(OPEN)
+  orderIndex     Int                 @default(0)
   assignedAt     DateTime?
   resolutionNote String?
   resolvedAt     DateTime?
