@@ -158,6 +158,38 @@ export class ApiClient {
   delete<T>(endpoint: string) {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
+
+  async download(endpoint: string, options: RequestInit = {}): Promise<Blob> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const config: RequestInit = {
+      ...options,
+      headers: this.getHeaders(options.body),
+      credentials: 'include',
+    };
+
+    // If it's a download, we might not want application/json content-type for the request body
+    // but the getHeaders logic handles it if body is not FormData. 
+    // It's mostly GET requests anyway.
+    const response = await fetch(url, config);
+
+    if (response.status === 401) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        const retryResponse = await fetch(url, config);
+        if (!retryResponse.ok) throw new Error(retryResponse.statusText);
+        return retryResponse.blob();
+      } else {
+        this.clearAuthCookies();
+        throw new Error('Unauthorized');
+      }
+    }
+
+    if (!response.ok) {
+      throw new Error(response.statusText);
+    }
+
+    return response.blob();
+  }
 }
 
 export const apiClient = new ApiClient();
