@@ -10,6 +10,7 @@ import {
   Building2,
   BadgeCheck,
   BarChart3,
+  CalendarDays,
   LucideIcon
 } from "lucide-react";
 import { AppRouteDef, NavGroup, RouteMeta } from "../types/navigation";
@@ -54,10 +55,24 @@ export const APP_ROUTES = {
   },
   leave: {
     id: "leave",
-    label: "Leave Requests",
+    label: "My Leaves",
     href: "/leave",
     icon: Calendar,
-    meta: { title: "Leave Requests", description: "Manage employee time off" }
+    meta: { title: "My Leaves", description: "Manage your time off" }
+  },
+  leaveApprovals: {
+    id: "leaveApprovals",
+    label: "Leave Approvals",
+    href: "/leave/requests",
+    icon: CalendarDays,
+    meta: { title: "Leave Approvals", description: "Review and approve leave requests" }
+  },
+  holidays: {
+    id: "holidays",
+    label: "Holidays",
+    href: "/holidays",
+    icon: CalendarDays,
+    meta: { title: "Holiday Calendar", description: "Manage company holidays and observances" }
   },
   tickets: {
     id: "tickets",
@@ -116,6 +131,8 @@ export const SIDEBAR_NAV: NavGroup[] = [
     items: [
       APP_ROUTES.timesheet,
       APP_ROUTES.leave,
+      APP_ROUTES.leaveApprovals,
+      APP_ROUTES.holidays,
       APP_ROUTES.tickets,
     ],
   },
