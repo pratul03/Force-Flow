@@ -10,6 +10,12 @@ export interface BackendTimeLog {
   status: TimeLogStatus;
   notes?: string | null;
   createdAt?: string;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
 }
 
 export interface TimesheetEntry {
@@ -22,6 +28,7 @@ export interface TimesheetEntry {
   overtime: number;
   status: 'pending' | 'approved' | 'rejected';
   notes?: string;
+  employeeName?: string;
 }
 
 export interface CreateTimeLogPayload {
@@ -32,7 +39,9 @@ export interface CreateTimeLogPayload {
   totalHours?: number;
 }
 
-export interface UpdateTimeLogPayload extends Partial<CreateTimeLogPayload> {}
+export interface UpdateTimeLogPayload extends Partial<CreateTimeLogPayload> {
+  status?: TimeLogStatus;
+}
 
 export function mapBackendTimelogToUi(entry: BackendTimeLog): TimesheetEntry {
   const startDate = new Date(entry.clockIn);
@@ -53,5 +62,6 @@ export function mapBackendTimelogToUi(entry: BackendTimeLog): TimesheetEntry {
           ? 'rejected'
           : 'pending',
     notes: entry.notes ?? undefined,
+    employeeName: entry.user ? `${entry.user.firstName} ${entry.user.lastName}` : undefined,
   };
 }
