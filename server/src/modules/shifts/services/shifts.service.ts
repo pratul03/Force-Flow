@@ -8,7 +8,14 @@ import { UpdateShiftDto } from '../dto/update-shift.dto';
 export class ShiftsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(dto: CreateShiftDto, organizationId: string) {
+  async create(dto: CreateShiftDto, organizationId: string) {
+    if (dto.isDefault) {
+      await this.prisma.shift.updateMany({
+        where: { organizationId },
+        data: { isDefault: false },
+      });
+    }
+
     return this.prisma.shift.create({
       data: {
         ...dto,
@@ -39,6 +46,14 @@ export class ShiftsService {
 
   async update(id: string, dto: UpdateShiftDto, organizationId: string) {
     await this.findOne(id, organizationId);
+    
+    if (dto.isDefault) {
+      await this.prisma.shift.updateMany({
+        where: { organizationId, id: { not: id } },
+        data: { isDefault: false },
+      });
+    }
+
     return this.prisma.shift.update({ where: { id }, data: dto });
   }
 
