@@ -66,9 +66,22 @@ export class AttendanceController {
     return this.attendanceService.getUserAttendance(userId, query, req.user);
   }
 
-  @Patch('user/:userId/timelogs/:timeLogId/status')
+  @Get('organization')
+  @UseGuards(RolesGuard)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER, Role.MANAGER)
+  getOrganizationAttendance(
+    @Query() query: AttendanceQueryDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.attendanceService.getOrganizationAttendance(
+      req.user.organizationId,
+      query,
+      req.user,
+    );
+  }
+
+  @Patch('timelogs/:timeLogId/status')
   updateTimeLogStatus(
-    @Param('userId') userId: string, // Kept for route consistency
     @Param('timeLogId') timeLogId: string,
     @Body() dto: UpdateTimeLogStatusDto,
     @Req() req: AuthenticatedRequest,
@@ -85,11 +98,10 @@ export class AttendanceController {
     return this.attendanceService.getDailySummary(userId, date, req.user);
   }
 
-  @Patch('user/:userId/timelogs/:timeLogId/adjust')
+  @Patch('timelogs/:timeLogId/adjust')
   @UseGuards(RolesGuard)
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   adjustTimeLog(
-    @Param('userId') userId: string,
     @Param('timeLogId') timeLogId: string,
     @Body() dto: UpdateTimelogDto,
     @Req() req: AuthenticatedRequest,
