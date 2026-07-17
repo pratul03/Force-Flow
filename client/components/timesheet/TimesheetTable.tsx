@@ -1,25 +1,19 @@
 "use client";
 
+import { useMemo } from "react";
 import { TimesheetEntry } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { TableLoadingSkeleton } from "@/components/ui/loading-skeletons";
 import { MoreHorizontal, Edit, Trash2, Check, X } from "lucide-react";
 import { format } from "date-fns";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable, DataTableColumnHeader } from "@/components/shared/data-table";
 
 interface TimesheetTableProps {
   entries: TimesheetEntry[];
@@ -30,11 +24,17 @@ interface TimesheetTableProps {
   isLoading?: boolean;
 }
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
   approved: "bg-green-100 text-green-800",
   rejected: "bg-red-100 text-red-800",
 };
+
+const statuses = [
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+];
 
 export function TimesheetTable({
   entries,
@@ -44,106 +44,166 @@ export function TimesheetTable({
   onDelete,
   isLoading = false,
 }: TimesheetTableProps) {
-  if (isLoading) {
-    return <TableLoadingSkeleton rows={6} />;
-  }
-
-  if (entries.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 border rounded-lg">
-        <p className="text-gray-500">No timesheet entries found</p>
-      </div>
-    );
-  }
+  const columns = useMemo<ColumnDef<TimesheetEntry>[]>(
+    () => [
+      {
+        accessorKey: "date",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Date" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">
+            {format(new Date(row.original.date), "MMM dd, yyyy")}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "employeeName",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Employee" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm font-medium">
+            {row.original.employeeName || "You"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "startTime",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Start Time" />
+        ),
+        cell: ({ row }) => <span className="text-sm">{row.getValue("startTime")}</span>,
+      },
+      {
+        accessorKey: "endTime",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="End Time" />
+        ),
+        cell: ({ row }) => <span className="text-sm">{row.getValue("endTime")}</span>,
+      },
+      {
+        accessorKey: "hoursWorked",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Hours Worked" />
+        ),
+        cell: ({ row }) => {
+          const hours = row.getValue("hoursWorked") as number;
+          return <span className="text-sm font-semibold">{hours.toFixed(2)} h</span>;
+        },
+      },
+      {
+        accessorKey: "overtime",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Overtime" />
+        ),
+        cell: ({ row }) => {
+          const ot = row.getValue("overtime") as number;
+          return (
+            <span className="text-sm">
+              {ot > 0 ? (
+                <span className="text-orange-600 font-semibold">
+                  {ot.toFixed(2)} h
+                </span>
+              ) : (
+                "-"
+              )}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => {
+          const status = row.getValue("status") as string;
+          const normalizedStatus = status.toLowerCase();
+          return (
+            <Badge
+              className={`text-xs capitalize ${statusColors[normalizedStatus] || "bg-gray-100 text-gray-800"}`}
+              variant="outline"
+            >
+              {status}
+            </Badge>
+          );
+        },
+        filterFn: (row, id, value) => {
+          return value.includes(row.getValue(id));
+        },
+      },
+      {
+        id: "actions",
+        header: () => <div className="text-right">Actions</div>,
+        cell: ({ row }) => {
+          const entry = row.original;
+          const status = entry.status.toLowerCase();
+          return (
+            <div className="text-right">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <span className="sr-only">Open menu</span>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {status === "pending" && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => onApprove?.(entry.id)}
+                        className="text-green-600"
+                      >
+                        <Check className="h-4 w-4 mr-2" />
+                        Approve
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onReject?.(entry.id)}
+                        className="text-red-600"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Reject
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {status !== "approved" && (
+                    <DropdownMenuItem onClick={() => onEdit?.(entry)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    onClick={() => onDelete?.(entry.id)}
+                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        },
+      },
+    ],
+    [onApprove, onReject, onEdit, onDelete]
+  );
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <Table>
-        <TableHeader className="bg-gray-50">
-          <TableRow>
-            <TableHead>Date</TableHead>
-            <TableHead>Start Time</TableHead>
-            <TableHead>End Time</TableHead>
-            <TableHead>Hours Worked</TableHead>
-            <TableHead>Overtime</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {entries.map((entry) => (
-            <TableRow key={entry.id} className="hover:bg-gray-50">
-              <TableCell className="font-medium">
-                {format(new Date(entry.date), "MMM dd, yyyy")}
-              </TableCell>
-              <TableCell className="text-sm">{entry.startTime}</TableCell>
-              <TableCell className="text-sm">{entry.endTime}</TableCell>
-              <TableCell className="text-sm font-semibold">
-                {entry.hoursWorked.toFixed(2)} h
-              </TableCell>
-              <TableCell className="text-sm">
-                {entry.overtime > 0 ? (
-                  <span className="text-orange-600 font-semibold">
-                    {entry.overtime.toFixed(2)} h
-                  </span>
-                ) : (
-                  "-"
-                )}
-              </TableCell>
-              <TableCell>
-                <Badge
-                  className={`text-xs ${statusColors[entry.status]}`}
-                  variant="outline"
-                >
-                  {entry.status}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {entry.status === "pending" && (
-                      <>
-                        <DropdownMenuItem
-                          onClick={() => onApprove?.(entry.id)}
-                          className="text-green-600"
-                        >
-                          <Check className="h-4 w-4 mr-2" />
-                          Approve
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onReject?.(entry.id)}
-                          className="text-red-600"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Reject
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    {entry.status !== "approved" && (
-                      <DropdownMenuItem onClick={() => onEdit?.(entry)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem
-                      onClick={() => onDelete?.(entry.id)}
-                      className="text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={entries}
+      isLoading={isLoading}
+      searchKey="date"
+      searchPlaceholder="Search by date (YYYY-MM-DD)..."
+      facetedFilters={[
+        {
+          column: "status",
+          title: "Status",
+          options: statuses,
+        },
+      ]}
+    />
   );
 }
