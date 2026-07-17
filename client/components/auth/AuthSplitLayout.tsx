@@ -77,32 +77,25 @@ export function AuthSplitLayout({
   return (
     <main className="min-h-screen bg-background">
       <div className="grid min-h-screen lg:grid-cols-[1.06fr_0.94fr]">
-        <section className="relative overflow-hidden bg-[linear-gradient(145deg,#0f274f_0%,#1b4f97_52%,#2d7de7_100%)] px-6 py-10 text-white sm:px-10 lg:px-14 lg:py-12 dark:bg-[linear-gradient(145deg,#050a14_0%,#0b1832_52%,#15396e_100%)]">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -left-28 top-16 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl dark:bg-cyan-300/30" />
-            <div className="absolute -right-14 -top-8 h-52 w-52 rounded-full bg-blue-100/15 blur-2xl dark:bg-blue-200/20" />
-            <div className="absolute -bottom-20 left-1/3 h-72 w-72 rounded-full bg-sky-400/15 blur-3xl dark:bg-sky-400/25" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_30%,rgba(255,255,255,0.16),transparent_40%),radial-gradient(circle_at_78%_65%,rgba(255,255,255,0.1),transparent_32%)]" />
-          </div>
-
+        <section className="relative overflow-hidden bg-primary px-6 py-10 text-primary-foreground sm:px-10 lg:px-14 lg:py-12">
           <div className="relative mx-auto flex h-full w-full max-w-2xl flex-col justify-between gap-10">
             <div className="flex flex-col items-start gap-4">
               <Link href="/" className="group inline-flex">
-                <span className="relative block h-24 w-56 sm:h-28 sm:w-64">
+                <span className="relative block h-24 w-48 sm:h-24 sm:w-56 rounded-xl border border-primary-foreground/20 bg-primary-foreground/5 backdrop-blur-md shadow-[0_4px_20px_rgba(255,255,255,0.06)] transition-all duration-300 group-hover:bg-primary-foreground/10 group-hover:shadow-[0_4px_24px_rgba(255,255,255,0.1)]">
                   <Image
-                    src="/flowforce.png"
+                    src="/transparent-logo.png"
                     alt="FlowForce"
                     fill
                     sizes="(min-width: 640px) 256px, 224px"
-                    className="object-contain object-left transition-transform duration-300 ease-out group-hover:scale-[1.02] mix-blend-difference"
+                    className="object-contain object-center transition-transform duration-300 ease-out group-hover:scale-[1.02] mix-blend-color-dodge"
                     priority
                   />
                 </span>
               </Link>
 
-              <div className="inline-flex w-fit items-center rounded-2xl border border-white/30 bg-white/10 px-4 py-2.5 backdrop-blur-sm">
+              <div className="inline-flex w-fit items-center rounded-2xl border border-primary-foreground/30 bg-primary-foreground/10 px-4 py-2.5 backdrop-blur-sm">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-white/70">
+                  <p className="text-xs uppercase tracking-[0.28em] text-primary-foreground/70">
                     FlowForce HRM
                   </p>
                   <p className="text-sm font-semibold tracking-wide">
@@ -113,7 +106,7 @@ export function AuthSplitLayout({
             </div>
 
             <div className="space-y-6">
-              <p className="max-w-md text-sm leading-relaxed text-blue-100/85 sm:text-base">
+              <p className="max-w-md text-sm leading-relaxed text-primary-foreground/85 sm:text-base">
                 Shift planning, approvals, people records, and insights built
                 into one focused operating experience.
               </p>
@@ -125,18 +118,18 @@ export function AuthSplitLayout({
                   animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                   exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
                   transition={MOTION_TRANSITIONS.reveal}
-                  className="rounded-3xl border border-white/22 bg-white/12 p-6 backdrop-blur-sm"
+                  className="rounded-3xl border border-primary-foreground/20 bg-primary-foreground/10 p-6 backdrop-blur-sm"
                 >
-                  <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100/85">
+                  <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-primary-foreground/85">
                     Live Pulse
                   </p>
-                  <h2 className="text-2xl font-semibold leading-tight text-white sm:text-3xl">
+                  <h2 className="text-2xl font-semibold leading-tight text-primary-foreground sm:text-3xl">
                     {activeSpeech.title}
                   </h2>
-                  <p className="mt-4 max-w-lg text-sm leading-relaxed text-blue-50/88 sm:text-base">
+                  <p className="mt-4 max-w-lg text-sm leading-relaxed text-primary-foreground/90 sm:text-base">
                     {activeSpeech.body}
                   </p>
-                  <div className="mt-5 inline-flex items-center rounded-full border border-white/20 bg-black/25 px-3 py-1.5 text-xs text-white/85">
+                  <div className="mt-5 inline-flex items-center rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1.5 text-xs text-primary-foreground/85">
                     {activeSpeech.cue}
                   </div>
                 </motion.div>
@@ -163,33 +156,35 @@ export function AuthSplitLayout({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/20 bg-black/20 px-4 py-3 backdrop-blur-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/80">
+              <div className="rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-3 backdrop-blur-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-primary-foreground/80">
                   Accuracy
                 </p>
-                <p className="mt-2 text-xl font-semibold text-white">99.4%</p>
+                <p className="mt-2 text-xl font-semibold text-primary-foreground">
+                  99.4%
+                </p>
               </div>
-              <div className="rounded-2xl border border-white/20 bg-black/20 px-4 py-3 backdrop-blur-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/80">
+              <div className="rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-3 backdrop-blur-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-primary-foreground/80">
                   Resolution
                 </p>
-                <p className="mt-2 text-xl font-semibold text-white">2.1h</p>
+                <p className="mt-2 text-xl font-semibold text-primary-foreground">
+                  2.1h
+                </p>
               </div>
-              <div className="rounded-2xl border border-white/20 bg-black/20 px-4 py-3 backdrop-blur-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/80">
+              <div className="rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-3 backdrop-blur-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-primary-foreground/80">
                   Visibility
                 </p>
-                <p className="mt-2 text-xl font-semibold text-white">24/7</p>
+                <p className="mt-2 text-xl font-semibold text-primary-foreground">
+                  24/7
+                </p>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="relative flex items-center justify-center overflow-hidden bg-[linear-gradient(150deg,#f8fbff_0%,#edf5ff_56%,#f7fbff_100%)] px-5 py-10 sm:px-8 lg:px-12 dark:bg-[linear-gradient(150deg,#090f1b_0%,#0d1729_56%,#101d33_100%)]">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -right-20 top-16 h-56 w-56 rounded-full bg-blue-500/10 blur-3xl dark:bg-sky-400/20" />
-            <div className="absolute -left-16 bottom-0 h-60 w-60 rounded-full bg-cyan-300/15 blur-3xl dark:bg-cyan-300/25" />
-          </div>
+        <section className="relative flex items-center justify-center overflow-hidden bg-background px-5 py-10 sm:px-8 lg:px-12">
           <div className="relative w-full max-w-md">{children}</div>
         </section>
       </div>
