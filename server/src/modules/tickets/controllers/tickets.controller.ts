@@ -19,6 +19,9 @@ import { TicketActorQueryDto } from '../dto/ticket-actor-query.dto';
 import { CreateTicketDto } from '../dto/create-ticket.dto';
 import { TicketsQueryDto } from '../dto/tickets-query.dto';
 import { UpdateTicketStatusDto } from '../dto/update-ticket-status.dto';
+import { UpdateTicketDetailsDto } from '../dto/update-ticket-details.dto';
+import { ReorderTicketsDto } from '../dto/reorder-tickets.dto';
+import { SwapTicketsDto } from '../dto/swap-tickets.dto';
 import { TicketsService } from '../services/tickets.service';
 
 @Controller('tickets')
@@ -32,6 +35,22 @@ export class TicketsController {
       ...query,
       organizationId: req.user.organizationId,
     });
+  }
+
+  @Patch('reorder')
+  reorderTickets(
+    @Body() dto: ReorderTicketsDto,
+    @Req() req: { user: { organizationId: string } },
+  ) {
+    return this.ticketsService.reorderTickets(req.user.organizationId, dto.updates);
+  }
+
+  @Patch('swap')
+  swapTickets(
+    @Body() dto: SwapTicketsDto,
+    @Req() req: { user: { organizationId: string } },
+  ) {
+    return this.ticketsService.swapTickets(req.user.organizationId, dto.ticket1Id, dto.ticket2Id);
   }
 
   @Get(':id/comments')
@@ -70,6 +89,11 @@ export class TicketsController {
     });
   }
 
+  @Get('by-slug/:slug')
+  findOneBySlug(@Param('slug') slug: string, @Req() req: { user: { organizationId: string } }) {
+    return this.ticketsService.findOneBySlug(slug, req.user.organizationId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: { user: { organizationId: string } }) {
     return this.ticketsService.findOne(id, req.user.organizationId);
@@ -89,6 +113,18 @@ export class TicketsController {
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.HR_MANAGER)
   assign(@Param('id') id: string, @Body() dto: AssignTicketDto, @Req() req: { user: { sub: string } }) {
     return this.ticketsService.assign(id, {
+      ...dto,
+      actorUserId: req.user.sub,
+    });
+  }
+
+  @Patch(':id')
+  updateDetails(
+    @Param('id') id: string,
+    @Body() dto: UpdateTicketDetailsDto,
+    @Req() req: { user: { sub: string } },
+  ) {
+    return this.ticketsService.updateDetails(id, {
       ...dto,
       actorUserId: req.user.sub,
     });
