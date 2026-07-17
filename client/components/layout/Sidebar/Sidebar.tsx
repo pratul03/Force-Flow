@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useApp } from "@/hooks/useApp";
 import { organizationsApi } from "@/features/organizations/api";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Menu, X, ChevronsRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV } from "@/lib/config/navigation";
@@ -112,9 +111,9 @@ export function Sidebar() {
           </span>
         </Button>
 
-        <div className="flex h-full flex-col">
+        <div className="flex h-full flex-col overflow-hidden">
           {/* Logo */}
-          <div className="flex h-16 items-center border-b border-sidebar-border px-4">
+          <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border px-4">
             <div
               className={cn(
                 "flex items-center gap-3",
@@ -128,9 +127,11 @@ export function Sidebar() {
                   className="h-10 w-10 rounded-xl object-cover"
                 />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground">
-                  FF
-                </div>
+                <img
+                  src="/flowforce.png"
+                  alt="FlowForce logo"
+                  className="h-10 w-10 rounded-xl object-contain bg-sidebar-primary/10"
+                />
               )}
               <div className={smoothCollapseClass}>
                 <h1 className="text-lg font-semibold text-sidebar-foreground">
@@ -144,8 +145,11 @@ export function Sidebar() {
           </div>
 
           {/* Navigation */}
-          <ScrollArea
-            className={cn("flex-1 py-5", sidebarCollapsed ? "px-2" : "px-4")}
+          <div
+            className={cn(
+              "flex flex-col gap-4 flex-1 overflow-y-auto py-5",
+              sidebarCollapsed ? "px-2" : "px-4",
+            )}
           >
             {SIDEBAR_NAV.map((group) => (
               <SidebarNavGroup
@@ -157,7 +161,7 @@ export function Sidebar() {
             ))}
 
             <SidebarUpgradeCard sidebarCollapsed={sidebarCollapsed} />
-          </ScrollArea>
+          </div>
 
           <SidebarUserCard
             sidebarCollapsed={sidebarCollapsed}
