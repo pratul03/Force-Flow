@@ -8,6 +8,24 @@ import {
 import { PrismaService } from '../../../prisma/prisma.service';
 import { DashboardPeriod } from '../dto/dashboard-charts-query.dto';
 
+// Simple CSV utility function
+function jsonToCsv(items: any[]): string {
+  if (!items || items.length === 0) return '';
+  const headers = Object.keys(items[0]);
+  const rows = items.map((item) =>
+    headers
+      .map((header) => {
+        const val = item[header];
+        if (typeof val === 'string') return `"${val.replace(/"/g, '""')}"`;
+        if (val instanceof Date) return `"${val.toISOString()}"`;
+        if (val === null || val === undefined) return '';
+        return val;
+      })
+      .join(','),
+  );
+  return [headers.join(','), ...rows].join('\n');
+}
+
 type ChartPoint = {
   label: string;
   value: number;
@@ -544,5 +562,54 @@ export class ReportsService {
     }
 
     return null;
+  }
+
+  async exportEmployeesCsv(organizationId: string): Promise<string> {
+    const employees = await this.prisma.user.findMany({
+      where: { organizationId },
+      include: {
+        department: true,
+        designation: true,
+      },
+      orderBy: { firstName: 'asc' },
+    });
+
+    const data = employees.map((emp) => ({
+      'Employee ID': emp.employeeId || '',
+      'First Name': emp.firstName,
+      'Last Name': emp.lastName,
+      'Email': emp.email,
+      'Role': emp.role,
+      'Status': emp.status,
+      'Department': emp.department?.name || '',
+      'Designation': emp.designation?.name || '',
+      'Joining Date': emp.joiningDate ? emp.joiningDate.toISOString().split('T')[0] : '',
+    }));
+
+    return jsonToCsv(data);
+  }
+
+  async exportLeavesCsv(organizationId: string): Promise<string> {
+    const leaves = await this.prisma.leave.findMany({
+      where: { user: { organizationId } },
+      include: {
+        user: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const data = leaves.map((leave) => ({
+      'Employee Name': `${leave.user.firstName} ${leave.user.lastName}`,
+      'Employee Email': leave.user.email,
+      'Leave Type': leave.leaveType,
+      'Start Date': leave.startDate.toISOString().split('T')[0],
+      'End Date': leave.endDate.toISOString().split('T')[0],
+      'Total Days': leave.totalDays,
+      'Reason': leave.reason,
+      'Status': leave.status,
+      'Applied On': leave.createdAt.toISOString().split('T')[0],
+    }));
+
+    return jsonToCsv(data);
   }
 }
