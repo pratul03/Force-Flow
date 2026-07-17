@@ -7,7 +7,12 @@ export const attendanceApi = {
     apiClient.get(`/attendance/user/${userId}${buildQuery({ from, to })}`),
   getDailySummary: (userId: string, date?: string) =>
     apiClient.get(`/attendance/user/${userId}/daily-summary${buildQuery({ date })}`),
+  getOrganizationAttendance: (from?: string, to?: string) =>
+    apiClient.get(`/attendance/organization${buildQuery({ from, to })}`),
+  updateTimeLogStatus: (userId: string, timeLogId: string, status: string, notes?: string) =>
+    apiClient.patch(`/attendance/user/${userId}/timelogs/${timeLogId}/status`, { status, notes }),
   startBreak: (data: unknown) => apiClient.post('/timelogs/break/start', data),
   endBreak: (data: unknown) => apiClient.post('/timelogs/break/end', data),
-  adjustTimeLog: (id: string, data: unknown) => apiClient.patch(`/timelogs/${id}/adjust`, data),
+  adjustTimeLog: (userId: string, timeLogId: string, data: unknown) => 
+    apiClient.patch(`/attendance/user/${userId}/timelogs/${timeLogId}/adjust`, data),
 };
