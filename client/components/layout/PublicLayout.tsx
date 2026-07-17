@@ -20,9 +20,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-                F
-              </div>
+              <img src="/flowforce.png" alt="FlowForce Logo" className="h-8 w-8 object-contain" />
               <span className="text-xl font-bold hidden sm:inline">
                 FlowForce
               </span>
@@ -142,9 +140,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             {/* Company Info */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-                  F
-                </div>
+                <img src="/flowforce.png" alt="FlowForce Logo" className="h-8 w-8 object-contain" />
                 <span className="text-lg font-bold">FlowForce</span>
               </div>
               <p className="text-sm text-muted-foreground">
