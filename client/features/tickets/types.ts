@@ -9,6 +9,7 @@ export interface BackendTicketUser {
 
 export interface BackendTicket {
   id: string;
+  slug: string;
   organizationId: string;
   requesterId: string;
   assigneeId?: string | null;
@@ -17,6 +18,7 @@ export interface BackendTicket {
   description: string;
   priority: TicketPriority;
   status: TicketStatus;
+  orderIndex: number;
   assignedAt?: string | null;
   resolutionNote?: string | null;
   resolvedAt?: string | null;
@@ -33,6 +35,7 @@ export interface CreateTicketPayload {
   description: string;
   priority?: TicketPriority;
   assigneeId?: string;
+  status?: TicketStatus;
 }
 
 export interface AssignTicketPayload {
@@ -68,7 +71,25 @@ export interface BackendTicketStatusEvent {
   actorUser?: BackendTicketUser;
 }
 
-export interface AddTicketCommentPayload {
-  actorUserId: string;
+export type AddTicketCommentPayload = {
   body: string;
+};
+
+export type TicketReorderItemPayload = {
+  id: string;
+  orderIndex: number;
+};
+
+export interface ReorderTicketsPayload {
+  updates: Array<{ id: string; orderIndex: number }>;
 }
+
+export interface UpdateTicketDetailsPayload {
+  title: string;
+  description: string;
+}
+
+export type SwapTicketsPayload = {
+  ticket1Id: string;
+  ticket2Id: string;
+};
