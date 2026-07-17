@@ -9,7 +9,11 @@ interface Props {
   smoothCollapseClass: string;
 }
 
-export function SidebarNavGroup({ group, sidebarCollapsed, smoothCollapseClass }: Props) {
+export function SidebarNavGroup({
+  group,
+  sidebarCollapsed,
+  smoothCollapseClass,
+}: Props) {
   const pathname = usePathname();
 
   return (
@@ -17,12 +21,12 @@ export function SidebarNavGroup({ group, sidebarCollapsed, smoothCollapseClass }
       <p
         className={cn(
           "px-2 mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60",
-          smoothCollapseClass
+          smoothCollapseClass,
         )}
       >
         {group.title}
       </p>
-      <nav className="space-y-1.5">
+      <nav className="flex flex-col gap-2">
         {group.items.map((item) => {
           const isRootDashboard = item.href === "/dashboard";
           const isActive = isRootDashboard
