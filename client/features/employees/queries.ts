@@ -29,6 +29,8 @@ export function useEmployee(id: string) {
       return mapBackendUserToEmployee(res.data!);
     },
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 
