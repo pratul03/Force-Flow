@@ -8,6 +8,7 @@ import { NotificationStatus, Prisma, QueueJob } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { renderTemplate } from '../../../common/templates/template-renderer';
 import { QueueService } from '../../queue/services/queue.service';
+import { MailService } from './mail.service';
 import { CreateNotificationDto } from '../dto/create-notification.dto';
 import { NotificationLogQueryDto } from '../dto/notification-log-query.dto';
 
@@ -16,6 +17,7 @@ export class NotificationsService implements OnModuleInit {
   constructor(
     private readonly queueService: QueueService,
     private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
   ) {}
 
   onModuleInit() {
@@ -88,28 +90,41 @@ export class NotificationsService implements OnModuleInit {
         ? (payload.metadata as Prisma.InputJsonValue)
         : undefined;
 
-    if (channel === 'email' && templateKey) {
-      const organizationId = explicitOrganizationId ?? (await this.resolveOrganizationId(userId));
+    if (channel === 'email') {
+      let emailAddress: string | undefined;
 
-      if (organizationId) {
-        const emailTemplate = await this.prisma.emailTemplate.findUnique({
-          where: {
-            organizationId_key: {
-              organizationId,
-              key: templateKey,
+      if (userId) {
+        const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+        emailAddress = user?.email;
+      }
+
+      if (templateKey) {
+        const organizationId = explicitOrganizationId ?? (await this.resolveOrganizationId(userId));
+
+        if (organizationId) {
+          const emailTemplate = await this.prisma.emailTemplate.findUnique({
+            where: {
+              organizationId_key: {
+                organizationId,
+                key: templateKey,
+              },
             },
-          },
-          select: {
-            subject: true,
-            body: true,
-            isActive: true,
-          },
-        });
+            select: {
+              subject: true,
+              body: true,
+              isActive: true,
+            },
+          });
 
-        if (emailTemplate?.isActive) {
-          title = renderTemplate(emailTemplate.subject, templateData);
-          message = renderTemplate(emailTemplate.body, templateData);
+          if (emailTemplate?.isActive) {
+            title = renderTemplate(emailTemplate.subject, templateData);
+            message = renderTemplate(emailTemplate.body, templateData);
+          }
         }
+      }
+
+      if (emailAddress) {
+        await this.mailService.sendMail(emailAddress, title, message);
       }
     }
 
