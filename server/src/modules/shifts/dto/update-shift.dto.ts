@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class UpdateShiftDto {
   @IsString()
@@ -15,15 +15,22 @@ export class UpdateShiftDto {
 
   @IsInt()
   @Min(0)
-  @Max(120)
   @IsOptional()
-  graceTimeMinutes?: number;
+  gracePeriodMins?: number;
 
   @IsInt()
   @Min(0)
-  @Max(240)
   @IsOptional()
-  breakDurationMinutes?: number;
+  halfDayMarkMins?: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  workingDays?: number[];
+
+  @IsBoolean()
+  @IsOptional()
+  isDefault?: boolean;
 
   @IsBoolean()
   @IsOptional()
