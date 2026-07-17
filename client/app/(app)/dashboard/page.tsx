@@ -10,6 +10,7 @@ import {
 import { D3Charts } from "@/components/dashboard/D3Charts";
 import { AttendanceWidget } from "@/components/attendance/AttendanceWidget";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BentoGrid } from "@/components/ui/bento-grid";
 import { Button } from "@/components/ui/button";
 import { PageLoadingSkeleton } from "@/components/ui/loading-skeletons";
 import { useDashboardStats, useRecentActivities } from "@/features/dashboard/queries";
@@ -117,85 +118,88 @@ export default function DashboardPage() {
       description="Welcome back! Here's an overview of your organization."
       error={error}
     >
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Total Employees"
-            value={stats.totalEmployees}
-            icon={Users}
-            color="blue"
-            description="Active employees"
-          />
-          <StatCard
-            title="Present Today"
-            value={stats.presentToday}
-            icon={UserCheck}
-            color="green"
-            trend={{ value: 5, isPositive: true }}
-            description="Employees at work"
-          />
-          <StatCard
-            title="On Leave"
-            value={stats.onLeave}
-            icon={Calendar}
-            color="yellow"
-            description="Currently on leave"
-          />
-          <StatCard
-            title="Pending Requests"
-            value={stats.pendingLeaveRequests}
-            icon={Clock}
-            color="red"
-            description="Leave requests awaiting approval"
-          />
-        </div>
-
-        {/* Charts */}
-        <D3Charts isLoading={false} />
-
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Activity - Takes 2 columns on large screens */}
-          <div className="lg:col-span-2">
-            <RecentActivity activities={activities} />
+        <BentoGrid className="grid-cols-1 md:grid-cols-3 gap-6 auto-rows-auto">
+          {/* Row 1 */}
+          <div className="md:col-span-2">
+            <D3Charts isLoading={false} />
           </div>
-
-          {/* Quick Actions & Attendance */}
-          <div className="space-y-6">
-            <AttendanceWidget />
-            <Card>
+          <div className="md:col-span-1">
+            <Card className="h-full">
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
-            <CardContent className="space-y-3">
-              <Link href="/employees/new" className="block">
-                <Button variant="outline" className="w-full justify-start">
-                  <Users size={18} className="mr-2" />
-                  Add Employee
-                </Button>
-              </Link>
-              <Link href="/leave" className="block">
-                <Button variant="outline" className="w-full justify-start">
-                  <Calendar size={18} className="mr-2" />
-                  Review Leave
-                </Button>
-              </Link>
-              <Link href="/timesheet" className="block">
-                <Button variant="outline" className="w-full justify-start">
-                  <Clock size={18} className="mr-2" />
-                  View Timesheets
-                </Button>
-              </Link>
-              <Link href="/reports" className="block">
-                <Button variant="outline" className="w-full justify-start">
-                  <TrendingUp size={18} className="mr-2" />
-                  View Reports
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+              <CardContent className="space-y-3">
+                <Link href="/employees/new" className="block">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Users size={18} className="mr-2" />
+                    Add Employee
+                  </Button>
+                </Link>
+                <Link href="/leave" className="block">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Calendar size={18} className="mr-2" />
+                    Review Leave
+                  </Button>
+                </Link>
+                <Link href="/timesheet" className="block">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Clock size={18} className="mr-2" />
+                    View Timesheets
+                  </Button>
+                </Link>
+                <Link href="/reports" className="block">
+                  <Button variant="outline" className="w-full justify-start">
+                    <TrendingUp size={18} className="mr-2" />
+                    View Reports
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           </div>
-        </div>
+
+          {/* Row 2 */}
+          <div className="md:col-span-1">
+            <div className="h-full">
+              <AttendanceWidget />
+            </div>
+          </div>
+          <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <StatCard
+              title="Total Employees"
+              value={stats.totalEmployees}
+              icon={Users}
+              color="blue"
+              description="Active employees"
+            />
+            <StatCard
+              title="Present Today"
+              value={stats.presentToday}
+              icon={UserCheck}
+              color="green"
+              trend={{ value: 5, isPositive: true }}
+              description="Employees at work"
+            />
+            <StatCard
+              title="On Leave"
+              value={stats.onLeave}
+              icon={Calendar}
+              color="yellow"
+              description="Currently on leave"
+            />
+            <StatCard
+              title="Pending Requests"
+              value={stats.pendingLeaveRequests}
+              icon={Clock}
+              color="red"
+              description="Leave requests awaiting approval"
+            />
+          </div>
+
+          {/* Row 3 */}
+          <div className="md:col-span-3">
+            <RecentActivity activities={activities} />
+          </div>
+        </BentoGrid>
     </PageShell>
   );
 }
