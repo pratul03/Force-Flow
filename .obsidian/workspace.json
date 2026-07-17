@@ -53,6 +53,51 @@
             }
           },
           {
+            "id": "88e30ac52e9bc1fc",
+            "type": "leaf",
+            "pinned": true,
+            "state": {
+              "type": "terminal:terminal",
+              "state": {
+                "terminal:terminal": {
+                  "cwd": "/Users/pratulmakar/Developer/hmr",
+                  "focus": false,
+                  "profile": {
+                    "args": [
+                      "--login"
+                    ],
+                    "environment": [],
+                    "executable": "/bin/zsh",
+                    "followTheme": true,
+                    "name": "",
+                    "platforms": {
+                      "darwin": true
+                    },
+                    "pythonExecutable": "python3",
+                    "restoreHistory": false,
+                    "rightClickAction": "copyPaste",
+                    "successExitCodes": [
+                      "0",
+                      "SIGINT",
+                      "SIGTERM"
+                    ],
+                    "terminalOptions": {
+                      "documentOverride": null
+                    },
+                    "type": "integrated",
+                    "useWin32Conhost": true
+                  },
+                  "profileSourceId": "darwinIntegratedDefault",
+                  "serial": null,
+                  "userTitle": ""
+                }
+              },
+              "pinned": true,
+              "icon": "terminal",
+              "title": "Terminal: zsh"
+            }
+          },
+          {
             "id": "d5e32431b45ae170",
             "type": "leaf",
             "state": {
@@ -223,19 +268,20 @@
       "terminal:Open terminal": false
     }
   },
-  "active": "d5e32431b45ae170",
+  "active": "88e30ac52e9bc1fc",
   "lastOpenFiles": [
-    "green-push.sh",
-    "client/app/(app)/settings/shifts/page.tsx",
-    "client/components/settings/ShiftDialog.tsx",
-    "client/features/shifts/queries.ts",
-    "client/features/shifts/types.ts",
-    "client/app/(app)/settings/holidays/page.tsx",
-    "client/components/settings/HolidayDialog.tsx",
-    "client/features/holidays/queries.ts",
-    "client/features/holidays/types.ts",
-    "client/app/(app)/settings/locations/page.tsx",
-    "client/components/settings/LocationDialog.tsx",
+    "server/dist/src/modules/tickets/dto/update-ticket-details.dto.d.ts",
+    "server/dist/src/modules/tickets/dto/update-ticket-details.dto.js",
+    "server/dist/src/modules/tickets/dto/update-ticket-details.dto.js.map",
+    "server/src/modules/tickets/dto/update-ticket-details.dto.ts",
+    "client/app/(app)/tickets/[slug]/page.tsx",
+    "client/app/(app)/tickets/[slug]",
+    "client/components/tickets/TicketHistoryModal.tsx",
+    "client/node_modules/@atlaskit",
+    "client/features/tickets/useTicketsSocket.ts",
+    "server/dist/src/modules/tickets/gateways/tickets.gateway.js.map",
+    "server/dist/src/modules/tickets/gateways/tickets.gateway.js",
+    "Force-Flow-Brain/00 Home/Product Planner.md",
     "Force-Flow-Brain/recreate.md",
     "Force-Flow-Brain/10 Development/Task Progress.md",
     "Force-Flow-Brain/11 AI Memory/Session Memory.md",
@@ -259,7 +305,6 @@
     "Force-Flow-Brain/08 Design Decisions/ADR-003 Prisma.md",
     "Force-Flow-Brain/08 Design Decisions/ADR-002 Folder Structure.md",
     "Force-Flow-Brain/08 Design Decisions/ADR-001 Authentication.md",
-    "Force-Flow-Brain/07 API/Payroll APIs.md",
-    "Force-Flow-Brain/07 API/Leave APIs.md"
+    "Force-Flow-Brain/07 API/Payroll APIs.md"
   ]
 }
