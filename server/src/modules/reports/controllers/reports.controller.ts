@@ -3,9 +3,11 @@ import {
   Get,
   Query,
   Req,
+  Res,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../../../common/auth/guards/jwt-auth.guard';
 import {
   DashboardChartsQueryDto,
@@ -43,6 +45,22 @@ export class ReportsController {
       this.requireOrganizationId(req),
       (query.period ?? 'monthly') as DashboardPeriod,
     );
+  }
+
+  @Get('export/employees')
+  async exportEmployees(@Req() req: AuthenticatedRequest, @Res() res: Response) {
+    const csv = await this.reportsService.exportEmployeesCsv(this.requireOrganizationId(req));
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="employees_export.csv"');
+    res.send(csv);
+  }
+
+  @Get('export/leaves')
+  async exportLeaves(@Req() req: AuthenticatedRequest, @Res() res: Response) {
+    const csv = await this.reportsService.exportLeavesCsv(this.requireOrganizationId(req));
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="leaves_export.csv"');
+    res.send(csv);
   }
 
   private requireOrganizationId(req: AuthenticatedRequest): string {
