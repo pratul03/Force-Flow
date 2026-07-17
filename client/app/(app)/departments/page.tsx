@@ -3,24 +3,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { StaggerItem } from "@/components/animations/StaggerReveal";
 import { PageShell } from "@/components/layout/PageShell";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DepartmentTable } from "@/components/departments/DepartmentTable";
 import {
   Dialog,
   DialogContent,
@@ -38,12 +24,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
-import { TableLoadingSkeleton } from "@/components/ui/loading-skeletons";
 import { useDepartmentsStore } from "@/features/departments/store";
 import { useDepartments, useCreateDepartment, useDeleteDepartment } from "@/features/departments/queries";
 import { useEmployees } from "@/features/employees/queries";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback } from "@radix-ui/react-avatar";
 
 export default function DepartmentsPage() {
   const { user } = useAuth();
@@ -202,90 +186,11 @@ export default function DepartmentsPage() {
       }
     >
       <StaggerItem>
-        <Card className="shadow-sm border-gray-200/60 dark:border-gray-800/60 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader className="bg-gray-50/50 dark:bg-gray-800/50">
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Parent</TableHead>
-                  <TableHead>Manager</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="p-4">
-                      <TableLoadingSkeleton rows={3} />
-                    </TableCell>
-                  </TableRow>
-                ) : departments.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center h-24 text-muted-foreground"
-                    >
-                      No departments found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  departments.map((dept) => (
-                    <TableRow
-                      key={dept.id}
-                      className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
-                    >
-                      <TableCell className="font-medium text-gray-900 dark:text-gray-100">
-                        {dept.code}
-                      </TableCell>
-                      <TableCell>{dept.name}</TableCell>
-                      <TableCell>
-                        {dept.parent ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-                            {dept.parent.name}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 italic text-sm">
-                            Top Level
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {dept.manager ? (
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarFallback className="text-[10px] bg-blue-100 text-blue-700">
-                                {dept.manager.name?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium">
-                              {dept.manager.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 italic text-sm">
-                            Unassigned
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => handleDelete(dept.id)}
-                        >
-                          Delete
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <DepartmentTable
+          departments={departments}
+          isLoading={isLoading}
+          onDelete={handleDelete}
+        />
       </StaggerItem>
     </PageShell>
   );
