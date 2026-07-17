@@ -7,35 +7,29 @@ import { TimesheetTable } from "@/components/timesheet/TimesheetTable";
 import { ManualAdjustDialog } from "@/components/timesheet/ManualAdjustDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Filter } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useTimesheetsStore } from "@/features/timesheets/store";
-import { useTimesheets, useUpdateTimesheet, useDeleteTimesheet } from "@/features/timesheets/queries";
-import { useAuth } from "@/hooks/useAuth";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  useTimesheets,
+  useUpdateTimesheet,
+  useDeleteTimesheet,
+} from "@/features/timesheets/queries";
+import { useAuth } from "@/hooks/useAuth";
+
 
 export default function TimesheetPage() {
-  const { filterStatus, setFilterStatus } = useTimesheetsStore();
   const { user } = useAuth();
+
+  const isManager = user?.role && ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'MANAGER'].includes(user.role);
   
-  const { data: entries = [], isLoading, error, refetch } = useTimesheets();
+  // If user is a manager, fetch all timesheets for the organization. Otherwise, just fetch theirs.
+  const { data: entries = [], isLoading, error, refetch } = useTimesheets(isManager ? undefined : user?.id);
   const { mutate: updateTimesheet } = useUpdateTimesheet();
   const { mutate: deleteTimesheet } = useDeleteTimesheet();
-  
+
   const [editingEntry, setEditingEntry] = useState<any | null>(null);
   const [isAdjustDialogOpen, setIsAdjustDialogOpen] = useState(false);
-
-  // Filter entries
-  const filteredEntries =
-    filterStatus === "all"
-      ? entries
-      : entries.filter((entry) => entry.status.toLowerCase() === filterStatus);
 
   const handleApprove = (entryId: string) => {
     updateTimesheet({ id: entryId, payload: { status: "APPROVED" } as any });
@@ -76,101 +70,83 @@ export default function TimesheetPage() {
         </Link>
       }
     >
-
-        {/* Summary cards */}
-        <StaggerItem>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6">
+      {/* Bento Grid Summary */}
+      <StaggerItem>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <Card className="md:col-span-2 border-blue-200/50 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600">
-                    Total Hours
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-400">
+                    Total Hours Tracked
                   </p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {totalHours.toFixed(1)}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {entries.length} entries
+                  <p className="text-4xl font-bold text-gray-900 dark:text-white">
+                    {totalHours.toFixed(1)}{" "}
+                    <span className="text-xl text-gray-500 font-normal">
+                      hrs
+                    </span>
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600">
-                    Overtime Hours
+                <div className="text-right">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Total Entries
                   </p>
-                  <p className="text-3xl font-bold text-orange-600">
-                    {totalOvertime.toFixed(1)}
+                  <p className="text-xl font-semibold text-gray-700 dark:text-gray-300">
+                    {entries.length}
                   </p>
-                  <p className="text-xs text-gray-500">Extra hours worked</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600">
-                    Pending Approval
-                  </p>
-                  <p className="text-3xl font-bold text-yellow-600">
-                    {pendingCount}
-                  </p>
-                  <p className="text-xs text-gray-500">Awaiting review</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </StaggerItem>
-
-        {/* Filters */}
-        <StaggerItem>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex gap-4 items-end">
-                <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 block mb-2">
-                    <Filter className="inline h-4 w-4 mr-2" />
-                    Filter by Status
-                  </label>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             </CardContent>
           </Card>
-        </StaggerItem>
 
-        {/* Timesheet table */}
-        <StaggerItem>
+          <Card className="border-orange-200/50 bg-gradient-to-br from-orange-500/10 via-transparent to-transparent">
+            <CardContent className="p-6">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-orange-800 dark:text-orange-400">
+                  Overtime
+                </p>
+                <p className="text-4xl font-bold text-orange-600 dark:text-orange-500">
+                  {totalOvertime.toFixed(1)}{" "}
+                  <span className="text-xl font-normal">hrs</span>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-yellow-200/50 bg-gradient-to-br from-yellow-500/10 via-transparent to-transparent">
+            <CardContent className="p-6">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-400">
+                  Pending Review
+                </p>
+                <p className="text-4xl font-bold text-yellow-600 dark:text-yellow-500">
+                  {pendingCount}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </StaggerItem>
+
+      <StaggerItem>
+        <div className="grid grid-cols-1 gap-4">
           <TimesheetTable
-            entries={filteredEntries}
+            entries={entries}
             onApprove={handleApprove}
             onReject={handleReject}
             onDelete={handleDelete}
             onEdit={handleEdit}
             isLoading={isLoading}
           />
-        </StaggerItem>
+        </div>
+      </StaggerItem>
 
-        <ManualAdjustDialog 
-          entry={editingEntry}
-          isOpen={isAdjustDialogOpen}
-          onClose={() => setIsAdjustDialogOpen(false)}
-          onSuccess={() => refetch()}
-        />
+      <ManualAdjustDialog
+        entry={editingEntry}
+        isOpen={isAdjustDialogOpen}
+        onClose={() => setIsAdjustDialogOpen(false)}
+        onSuccess={() => refetch()}
+      />
     </PageShell>
   );
 }
