@@ -165,6 +165,51 @@ export class AttendanceService implements OnModuleInit {
             }
           : {}),
       },
+      include: {
+        user: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        shiftAssignment: {
+          include: { shift: true },
+        },
+      },
+      orderBy: { clockIn: 'desc' },
+      take: query.limit ?? 100,
+    });
+  }
+
+  async getOrganizationAttendance(
+    organizationId: string,
+    query: AttendanceQueryDto,
+    actor: { sub: string; organizationId: string; role: string },
+  ) {
+    if (!this.elevatedRoles.has(actor.role as Role) || actor.organizationId !== organizationId) {
+      throw new ForbiddenException('Only managers can view organization attendance');
+    }
+
+    const fromDate = query.fromDate ? new Date(query.fromDate) : undefined;
+    const toDate = query.toDate ? new Date(query.toDate) : undefined;
+
+    return this.prisma.timeLog.findMany({
+      where: {
+        user: { organizationId },
+        ...(fromDate || toDate
+          ? {
+              clockIn: {
+                gte: fromDate,
+                lte: toDate,
+              },
+            }
+          : {}),
+      },
+      include: {
+        user: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        shiftAssignment: {
+          include: { shift: true },
+        },
+      },
       orderBy: { clockIn: 'desc' },
       take: query.limit ?? 100,
     });
@@ -539,7 +584,7 @@ export class AttendanceService implements OnModuleInit {
 
   private calculateShiftScheduleAndLateness(
     clockInAt: Date,
-    shift: { startTime: string; endTime: string; graceTimeMinutes: number },
+    shift: { startTime: string; endTime: string; gracePeriodMins: number },
   ) {
     const scheduledStart = this.combineDateAndTime(clockInAt, shift.startTime);
     let scheduledEnd = this.combineDateAndTime(clockInAt, shift.endTime);
@@ -549,7 +594,7 @@ export class AttendanceService implements OnModuleInit {
     }
 
     const lateRaw = Math.floor((clockInAt.getTime() - scheduledStart.getTime()) / (1000 * 60));
-    const lateByMinutes = Math.max(0, lateRaw - shift.graceTimeMinutes);
+    const lateByMinutes = Math.max(0, lateRaw - shift.gracePeriodMins);
 
     return { scheduledStart, scheduledEnd, lateByMinutes };
   }
