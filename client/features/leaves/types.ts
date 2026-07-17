@@ -1,24 +1,13 @@
-export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-
 export type LeaveType =
   | 'SICK'
-  | 'CASUAL'
-  | 'EARNED'
+  | 'VACATION'
+  | 'PERSONAL'
   | 'MATERNITY'
   | 'PATERNITY'
-  | 'UNPAID';
+  | 'UNPAID'
+  | 'OTHER';
 
-export interface LeaveRequest {
-  id: string;
-  employeeName: string;
-  leaveType: string;
-  startDate: string;
-  endDate: string;
-  days: number;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  appliedOn: string;
-}
+export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 export interface BackendLeave {
   id: string;
@@ -26,36 +15,50 @@ export interface BackendLeave {
   leaveType: LeaveType;
   startDate: string;
   endDate: string;
+  totalDays: number;
   reason: string | null;
   status: LeaveStatus;
-  reviewerId: string | null;
+  appliedToId: string | null;
+  approvedById: string | null;
+  approvedAt: string | null;
   rejectionReason: string | null;
-  organizationId: string;
+  isHalfDay: boolean;
   createdAt: string;
   updatedAt: string;
-  user?: {
-    firstName?: string;
-    lastName?: string;
-    email: string;
-  };
-  reviewer?: {
-    firstName?: string;
-    lastName?: string;
-    email: string;
-  };
 }
 
 export interface CreateLeavePayload {
-  userId: string;
-  organizationId: string;
   leaveType: LeaveType;
   startDate: string;
   endDate: string;
   reason?: string;
+  appliedToId?: string;
+  isHalfDay?: boolean;
 }
 
-export interface UpdateLeaveStatusPayload {
-  actorUserId: string;
-  status: LeaveStatus;
-  rejectionReason?: string;
+export interface UpdateLeavePayload {
+  leaveType?: LeaveType;
+  startDate?: string;
+  endDate?: string;
+  reason?: string;
+  appliedToId?: string;
+  isHalfDay?: boolean;
+}
+
+export interface LeaveApprovalPayload {
+  reason?: string;
+}
+
+export interface LeaveRejectionPayload {
+  reason: string;
+}
+
+export interface LeaveCancelPayload {
+  reason?: string;
+}
+
+export interface LeavesQueryFilters {
+  userId?: string;
+  approverId?: string;
+  status?: LeaveStatus;
 }
