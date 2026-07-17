@@ -62,6 +62,19 @@ export class SchedulerService {
     });
   }
 
+  @Cron('*/20 * * * *')
+  async runSlaEngineCron() {
+    try {
+      await this.queueService.enqueue({
+        type: 'tickets.check-sla',
+        payload: { trigger: 'cron-sla-engine' },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown scheduler error';
+      this.logger.error(`SLA Engine scheduler failed: ${message}`);
+    }
+  }
+
   @Cron('5 0 * * *')
   async runNightlyCron() {
     try {
